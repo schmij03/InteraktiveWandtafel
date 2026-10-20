@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Interaktive Wandtafel</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='5' width='28' height='20' rx='3' fill='%232c4f3c'/%3E%3Cpath d='M8 18c3-6 6 2 9-3s4 1 7-2' stroke='white' stroke-width='2' fill='none'/%3E%3Crect x='10' y='26' width='12' height='2' rx='1' fill='%23e4572e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/basis.css">
+  <link rel="stylesheet" href="css/start.css">
+  <link rel="stylesheet" href="css/tafel.css">
+</head>
+<body class="oberflaeche start-seite">
+  <header class="kopf">
+    <div class="kopf-innen">
+      <a class="marke" href="index.html">
+        <span class="marke-punkt">IW</span>
+        <span>Interaktive Wandtafel<small>Fächer · Kapitel · Tafeln</small></span>
+      </a>
+      <div class="werkzeuge">
+        <label class="unsichtbar" for="suche">Tafeln suchen</label>
+        <input id="suche" type="search" placeholder="Tafeln suchen …" autocomplete="off">
+        <button type="button" class="knopf" id="importieren" title="Wandtafel-Datei (.json) oder exportierte HTML-Datei importieren">Importieren</button>
+        <button type="button" class="knopf" id="sichern" title="Alle Fächer mit allen Tafeln als eine Datei speichern">Alles sichern</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="start-haupt">
+    <nav class="faecher" aria-label="Fächer">
+      <h2>Fächer</h2>
+      <ul id="faecher-liste"></ul>
+      <button type="button" class="knopf fach-neu" id="fach-neu">+ Fach</button>
+      <p class="speicher-info" id="speicher-info"></p>
+    </nav>
+    <main class="fach-ansicht" id="inhalt">
+      <p class="ladeanzeige">Wird geladen …</p>
+    </main>
+  </div>
+
+  <input type="file" id="import-datei" accept=".json,.html,application/json,text/html" hidden>
+  <script src="js/gemeinsam.js"></script>
+  <script src="js/speicher.js"></script>
+  <script src="js/elemente.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/start.js"></script>
+</body>
+</html>

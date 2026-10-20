@@ -1,0 +1,67 @@
+# Prueft die Wandtafel im Browser und veroeffentlicht site/ mit GitHub Pages.
+#
+# Einmalig einrichten: Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Website pruefen und veroeffentlichen
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Node-Pakete und Chromium installieren
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Website im Browser pruefen
+        run: node tools/pruefen.mjs --bilder bildschirmfotos
+
+      - name: Bildschirmfotos ablegen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bildschirmfotos
+          path: bildschirmfotos
+          retention-days: 7
+
+      - name: Website fuer GitHub Pages bereitstellen
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  veroeffentlichen:
+    needs: pruefen
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages veroeffentlichen
+        id: pages
+        uses: actions/deploy-pages@v4
