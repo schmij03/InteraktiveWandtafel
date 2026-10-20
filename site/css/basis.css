@@ -1,0 +1,380 @@
+/*
+ * Gemeinsame Grundlagen: Farben, Schrift, Knoepfe, Kopfzeile, Dialoge,
+ * Menues und Meldungen. Farben wie in MI_Connected3.
+ */
+
+@font-face {
+  font-family: "Carlito";
+  src: url("../fonts/carlito-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Carlito";
+  src: url("../fonts/carlito-latin-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Carlito";
+  src: url("../fonts/carlito-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Carlito";
+  src: url("../fonts/carlito-latin-700-italic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  --dunkelblau: #21295c;
+  --petrol: #065a82;
+  --petrol-hell: #dceaf2;
+  --orange: #e4572e;
+  --orange-dunkel: #c2441f;
+  --hellgrau: #eaf2f6;
+  --hellblau: #f4f8fa;
+  --grau: #d9d9d9;
+  --text: #1f2933;
+  --text-leise: #595959;
+  --gruen: #2e7d32;
+  --gruen-hell: #e7f3e8;
+  --rot: #b3261e;
+  --weiss: #ffffff;
+  --schrift: "Calibri", "Carlito", "Lato", "Segoe UI", Arial, sans-serif;
+  --radius: 10px;
+  --schatten: 0 1px 3px rgba(23, 42, 75, 0.12), 0 4px 14px rgba(23, 42, 75, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body.oberflaeche {
+  margin: 0;
+  font-family: var(--schrift);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--text);
+  background: #f7f8fa;
+}
+
+.oberflaeche a:not(.knopf) {
+  color: var(--petrol);
+}
+
+.oberflaeche button,
+.oberflaeche .knopf,
+.oberflaeche input,
+.oberflaeche select,
+.oberflaeche textarea {
+  font: inherit;
+}
+
+/* Knoepfe */
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--grau);
+  border-radius: 8px;
+  background: var(--weiss);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.knopf:hover {
+  background: var(--hellgrau);
+  border-color: #bfbfbf;
+}
+.knopf:focus-visible,
+.oberflaeche input:focus-visible,
+.oberflaeche select:focus-visible,
+.oberflaeche textarea:focus-visible,
+.oberflaeche a:focus-visible {
+  outline: 3px solid rgba(228, 87, 46, 0.55);
+  outline-offset: 1px;
+}
+.knopf[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+.knopf-haupt {
+  background: var(--petrol);
+  border-color: var(--petrol);
+  color: var(--weiss);
+  font-weight: 700;
+}
+.knopf-haupt:hover {
+  background: #054a6b;
+  border-color: #054a6b;
+}
+.knopf-akzent {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: var(--weiss);
+  font-weight: 700;
+}
+.knopf-akzent:hover {
+  background: var(--orange-dunkel);
+  border-color: var(--orange-dunkel);
+}
+.knopf-gefahr {
+  background: var(--rot);
+  border-color: var(--rot);
+}
+.knopf-gefahr:hover {
+  background: #8c1d18;
+  border-color: #8c1d18;
+}
+.knopf-klein {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 15px;
+}
+.knopf-icon {
+  padding: 6px;
+  width: 40px;
+}
+.knopf-icon.knopf-klein {
+  width: 34px;
+}
+.knopf svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* Kopfzeile */
+.kopf {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--dunkelblau);
+  color: var(--weiss);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.kopf-innen {
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+}
+.oberflaeche a.marke {
+  color: var(--weiss);
+  text-decoration: none;
+}
+.marke-punkt {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: var(--weiss);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  flex: none;
+}
+.oberflaeche a.marke-punkt {
+  color: var(--weiss);
+  text-decoration: none;
+}
+.marke small {
+  display: block;
+  font-weight: 400;
+  font-size: 14px;
+  opacity: 0.8;
+}
+.unsichtbar {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Dialog */
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  font-family: var(--schrift);
+  color: var(--text);
+}
+.dialog::backdrop {
+  background: rgba(23, 30, 60, 0.45);
+}
+.dialog form {
+  padding: 20px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog h2 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--dunkelblau);
+}
+.dialog-text {
+  margin: 0;
+}
+.dialog-hinweis {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--hellgrau);
+  color: var(--text-leise);
+  font-size: 15px;
+}
+.dialog-feld {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.dialog-feld small {
+  font-weight: 400;
+  color: var(--text-leise);
+}
+.dialog-feld input[type="text"],
+.dialog-feld input[type="url"],
+.dialog-feld select,
+.dialog-feld textarea {
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid #b9c3ca;
+  border-radius: 8px;
+  font-weight: 400;
+  font-size: 17px;
+  background: var(--weiss);
+  color: var(--text);
+}
+.dialog-feld input[type="file"] {
+  font-weight: 400;
+}
+.farbwahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.farbwahl input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--farbe);
+  border: 3px solid var(--weiss);
+  box-shadow: 0 0 0 1px var(--grau);
+  cursor: pointer;
+}
+.farbwahl input:checked {
+  box-shadow: 0 0 0 3px var(--dunkelblau);
+}
+.dialog-knoepfe {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* Aufklappmenue */
+.klappmenue {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  background: var(--weiss);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 30px rgba(23, 42, 75, 0.25);
+  font-family: var(--schrift);
+}
+.klappmenue button {
+  text-align: left;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.klappmenue button:hover,
+.klappmenue button:focus-visible {
+  background: var(--hellgrau);
+  outline: none;
+}
+.klappmenue button.gefahr {
+  color: var(--rot);
+}
+.klappmenue hr {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+  margin: 4px 0;
+}
+
+/* Meldung unten */
+.meldung {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--dunkelblau);
+  color: var(--weiss);
+  box-shadow: var(--schatten);
+  z-index: 2000;
+  font-family: var(--schrift);
+}
+.meldung[hidden] {
+  display: none;
+}
+
+.fehler-seite {
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 0 16px;
+}
+.fehler-seite h1 {
+  color: var(--dunkelblau);
+}
