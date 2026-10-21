@@ -3,7 +3,7 @@
  * Prueft die Website automatisch im Browser (Chromium mit Playwright):
  * Faecher, Kapitel und Tafeln anlegen, Elemente und Medien einfuegen, Seiten,
  * Zeichnen, Rueckgaengig, Speichern, Praesentieren, Export (HTML, PDF, Datei)
- * und Import.
+ * und Import, Betrieb als Web-App ohne Internet.
  *
  * Aufruf: node tools/pruefen.mjs [--bilder ordner]
  *   --bilder  speichert Bildschirmfotos in diesem Ordner
@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
-import { serverStarten } from "./server.mjs";
+import { serverStarten, ORDNER } from "./server.mjs";
 
 const args = process.argv.slice(2);
 let bilderOrdner = null;
@@ -883,6 +883,53 @@ try {
   pruefe((await ip.locator(".element").count()) === 5, "Beispiel-Lektion: alle Elemente der ersten Seite sichtbar");
   await foto(ip, "19-ki-lektion");
   await ik.close();
+  }
+
+  // ---------- Web-App ohne Internet ----------
+  console.log("Web-App ohne Internet");
+  {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ORDNER, "manifest.webmanifest"), "utf8"));
+    pruefe(
+      manifest.start_url && manifest.display === "standalone" && manifest.icons.every((i) => fs.existsSync(path.join(ORDNER, i.src))),
+      "Manifest mit Startseite und vorhandenen Symbolen"
+    );
+    // Alle Dateien der Website muessen im Service Worker stehen, sonst fehlen sie offline
+    const swText = fs.readFileSync(path.join(ORDNER, "sw.js"), "utf8");
+    const liste = [...swText.match(/var DATEIEN = \[([\s\S]*?)\];/)[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    const alleDateien = fs.readdirSync(ORDNER, { recursive: true })
+      .map((d) => d.split(path.sep).join("/"))
+      .filter((d) => fs.statSync(path.join(ORDNER, d)).isFile() && d !== "sw.js" && !d.endsWith(".txt"));
+    const fehlend = alleDateien.filter((d) => !liste.includes(d));
+    const zuviel = liste.filter((d) => d !== "./" && !alleDateien.includes(d));
+    pruefe(!fehlend.length && !zuviel.length, "Service Worker kennt alle Dateien" + (fehlend.length || zuviel.length ? ": fehlt " + fehlend.join(", ") + " / gibt es nicht " + zuviel.join(", ") : ""));
+
+    const ok = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const op = await ok.newPage();
+    op.on("pageerror", (e) => seitenFehler.push(e.message));
+    op.on("dialog", (d) => d.accept());
+    await op.goto(BASIS);
+    await op.waitForSelector(".willkommen");
+    await op.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller);
+    pruefe(true, "Service Worker aktiv");
+
+    await ok.setOffline(true);
+    const antwort = await op.reload();
+    await op.waitForSelector(".willkommen");
+    pruefe(antwort.fromServiceWorker(), "Startseite laedt ohne Internet");
+    pruefe(await op.evaluate(() => document.fonts.check('16px "Carlito"') && getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)"), "Ohne Internet: Stil und Schrift vorhanden");
+
+    // Ohne Internet eine Lektion importieren und praesentieren
+    await op.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "..", "docs", "beispiel-lektion.wandtafel.json"));
+    const karte = op.locator(".tafel-karte:has-text('Der Wasserkreislauf (Lektion)') a.knopf-haupt");
+    // Bei leerer Sammlung fragt die Wandtafel nicht nach dem Ziel
+    await op.locator("dialog[open], .tafel-karte").first().waitFor();
+    if (await op.locator("dialog[open]").count()) await op.locator("dialog[open] button[type=submit]").click();
+    await karte.waitFor();
+    await karte.click();
+    await op.waitForSelector(".element-timer");
+    pruefe(/tafel\.html\?t=/.test(op.url()) && (await op.locator(".element").count()) === 5, "Ohne Internet: Tafel oeffnet mit allen Elementen");
+    await foto(op, "20-offline");
+    await ok.close();
   }
 
   pruefe(seitenFehler.length === 0, "Keine JavaScript-Fehler" + (seitenFehler.length ? ": " + seitenFehler.join(" | ") : ""));

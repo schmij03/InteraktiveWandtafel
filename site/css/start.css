@@ -34,6 +34,9 @@
   color: var(--weiss);
   border-color: rgba(255, 255, 255, 0.35);
 }
+.werkzeuge .knopf[hidden] {
+  display: none;
+}
 .werkzeuge .knopf:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.6);

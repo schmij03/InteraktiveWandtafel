@@ -18,6 +18,8 @@ interaktiven Wandtafel von fobizz und aufgebaut wie die Tafel in
 - **PowerPoint importieren:** eine `.pptx`-Datei hochladen, jede Folie wird eine bearbeitbare Seite
 - **Export** als HTML-Datei (offline präsentieren), PDF, **PowerPoint (.pptx)** und Wandtafel-Datei;
   **Import** auf jedem Gerät
+- **Web-App ohne Internet:** als App installieren (Computer, Tablet, Handy); nach dem ersten Besuch läuft alles
+  auch offline
 - **Anleitung für KI:** aus einer PowerPoint eine ganze Lektion mit Phasen und Modulen erstellen lassen,
   siehe [docs/ki-anleitung.md](docs/ki-anleitung.md)
 
@@ -135,6 +137,22 @@ PowerPoint eine Lektion (Einstieg, Input, Erarbeitung, Sicherung, Abschluss) mit
 Tabellen und Lehrer-Notizen wird: Prompt zum Kopieren, vollständiges Datenformat, Checkliste und eine
 [Beispiel-Lektion](docs/beispiel-lektion.wandtafel.json) zum Importieren.
 
+### Als App ohne Internet
+
+Nach dem ersten Besuch legt der Browser alle Dateien der Wandtafel ab. Danach startet sie auch ohne Internet,
+mit allen Tafeln, Medien, Import und Export. Nur Webseiten, YouTube und LearningApps brauchen Internet.
+
+Installieren (eigenes Fenster, Symbol auf dem Schreibtisch oder Startbildschirm):
+
+| Gerät | So geht es |
+|---|---|
+| Chrome, Edge (Windows, macOS, Chromebook) | Knopf «Als App installieren» oben auf der Übersicht, oder Installieren-Symbol in der Adressleiste |
+| iPad, iPhone (Safari) | Teilen > «Zum Home-Bildschirm» |
+| Android (Chrome) | Menü ⋮ > «App installieren» |
+
+In Chrome und Edge lässt sich eine `.pptx`-Datei danach auch per Rechtsklick > «Öffnen mit» > Interaktive Wandtafel
+importieren. Neue Versionen lädt die App im Hintergrund, sobald Internet da ist; sie gelten ab dem nächsten Start.
+
 **Wichtig:** Die Daten liegen nur in diesem Browser auf diesem Gerät. Browserdaten löschen löscht auch die Tafeln.
 Regelmässig «Alles sichern» verwenden.
 
@@ -162,6 +180,8 @@ die App nicht zuverlässig, weil Browser dort den Speicher einschränken; export
 | Export und Import | `site/js/export.js`, Offline-Ansicht `site/js/ansicht.js` |
 | PowerPoint-Export (eigenes ZIP und Office Open XML, ohne Bibliothek) | `site/js/pptx.js` |
 | PowerPoint-Import (ZIP mit `DecompressionStream` entpacken, Office Open XML lesen) | `site/js/pptx-lesen.js` |
+| Web-App: Manifest, Service Worker (Dateien für offline), Installieren-Knopf | `site/manifest.webmanifest`, `site/sw.js`, `site/js/app.js` |
+| App-Symbole (PNG aus `symbol.svg` erzeugen: `node tools/symbole.mjs`) | `site/bilder/` |
 | Dialoge, Menüs, Icons | `site/js/gemeinsam.js`, `site/css/basis.css` |
 | Vorschau-Server, Browsertest | `tools/vorschau.mjs`, `tools/pruefen.mjs`, `tools/server.mjs` |
 | Test-PowerPoint für den Import (erzeugt mit python-pptx) | `tools/testdaten/beispiel.pptx`, `tools/testdaten/beispiel-erzeugen.py` |

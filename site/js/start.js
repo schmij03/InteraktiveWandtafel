@@ -806,6 +806,12 @@
         fachId = hashLesen();
         zeichnen();
         speicherInfo();
+        // Installierte App: mit der Wandtafel geoeffnete PowerPoint-Datei importieren
+        if (window.launchQueue) {
+          window.launchQueue.setConsumer(function (start) {
+            if (start.files && start.files[0]) start.files[0].getFile().then(importDatei);
+          });
+        }
       })
       .catch(function (f) {
         inhalt.innerHTML = "";
