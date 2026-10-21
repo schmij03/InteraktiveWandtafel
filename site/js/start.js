@@ -1,6 +1,7 @@
 /*
- * Uebersicht (index.html): Faecher anlegen, darin Kapitel/Themen, darin Tafeln.
- * Das gewaehlte Fach steht in der Adresse (#fach=<id>).
+ * Uebersicht (index.html): Faecher anlegen, darin optional Jahre (z. B. 1. Sek),
+ * darin Kapitel/Themen, darin Tafeln.
+ * Gewaehltes Fach und Jahr stehen in der Adresse (#fach=<id>&jahr=<id>).
  */
 (function () {
   "use strict";
@@ -11,6 +12,7 @@
   var X = W.Export;
   var el = W.el;
 
+  var JAHR_VORSCHLAEGE = ["1. Sek", "2. Sek", "3. Sek"];
   var FACHFARBEN = ["#065a82", "#e4572e", "#2e7d32", "#7b3fa0", "#c2185b", "#00838f", "#ef6c00", "#21295c"];
 
   var inhalt = document.getElementById("inhalt");
@@ -18,6 +20,7 @@
   var sammlung = null;
   var tafeln = {}; // id -> Tafel
   var fachId = null;
+  var jahrId = null; // gewaehltes Jahr im Fach, null = alle
   var importZiel = null;
 
   // ---------- Laden und Speichern ----------
@@ -33,6 +36,7 @@
       var eingeordnet = {};
       sammlung.faecher.forEach(function (f) {
         f.kapitel.forEach(function (k) {
+          if (k.jahr && !W.jahrVon(f, k)) delete k.jahr;
           k.tafeln = k.tafeln.filter(function (id) {
             return tafeln[id];
           });
@@ -80,8 +84,23 @@
     return { id: W.neueId("k"), name: name, tafeln: [] };
   }
 
-  function anzahlTafeln(fach) {
-    return fach.kapitel.reduce(function (n, k) {
+  function neuesJahrObjekt(name) {
+    return { id: W.neueId("j"), name: name };
+  }
+
+  function jahreVon(fach) {
+    return fach.jahre || [];
+  }
+
+  /** Kapitel eines Jahres; jahr null = Kapitel ohne Jahr */
+  function kapitelImJahr(fach, jahr) {
+    return fach.kapitel.filter(function (k) {
+      return (k.jahr || null) === (jahr ? jahr.id : null);
+    });
+  }
+
+  function anzahlTafeln(fach, kapitelListe) {
+    return (kapitelListe || fach.kapitel).reduce(function (n, k) {
       return n + k.tafeln.length;
     }, 0);
   }
@@ -93,12 +112,19 @@
   // ---------- Faecher ----------
 
   function fachDialog(fach) {
+    var felder = [
+      { name: "name", label: "Name des Fachs", wert: fach ? fach.name : "", platzhalter: "z. B. Medien und Informatik", pflicht: true },
+      { name: "farbe", label: "Farbe", typ: "farbe", optionen: FACHFARBEN, wert: fach ? fach.farbe : FACHFARBEN[sammlung.faecher.length % FACHFARBEN.length] }
+    ];
+    if (!fach) {
+      felder.push({ typ: "hinweis", text: "Jahre (freiwillig): darin legst du später die Themen an. Weitere Jahre gehen jederzeit mit «+ Jahr»." });
+      JAHR_VORSCHLAEGE.forEach(function (name, i) {
+        felder.push({ name: "jahr" + i, label: name, typ: "haken" });
+      });
+    }
     return W.dialog({
       titel: fach ? "Fach bearbeiten" : "Neues Fach",
-      felder: [
-        { name: "name", label: "Name des Fachs", wert: fach ? fach.name : "", platzhalter: "z. B. Medien und Informatik", pflicht: true },
-        { name: "farbe", label: "Farbe", typ: "farbe", optionen: FACHFARBEN, wert: fach ? fach.farbe : FACHFARBEN[sammlung.faecher.length % FACHFARBEN.length] }
-      ],
+      felder: felder,
       knopf: fach ? "Speichern" : "Anlegen"
     });
   }
@@ -107,7 +133,10 @@
     fachDialog().then(function (w) {
       if (!w || !w.name) return;
       var fach = neuesFachObjekt(w.name, w.farbe);
-      fach.kapitel.push(neuesKapitelObjekt("Allgemein"));
+      JAHR_VORSCHLAEGE.forEach(function (name, i) {
+        if (w["jahr" + i]) (fach.jahre = fach.jahre || []).push(neuesJahrObjekt(name));
+      });
+      if (!fach.jahre) fach.kapitel.push(neuesKapitelObjekt("Allgemein"));
       sammlung.faecher.push(fach);
       sichern().then(function () {
         fachWaehlen(fach.id);
@@ -152,16 +181,108 @@
     sichern().then(zeichnen);
   }
 
-  // ---------- Kapitel ----------
+  // ---------- Jahre ----------
 
-  function kapitelAnlegen(fach) {
+  function jahrAnlegen(fach) {
+    var vorschlag = JAHR_VORSCHLAEGE.find(function (name) {
+      return !jahreVon(fach).some(function (j) {
+        return W.normal(j.name) === W.normal(name);
+      });
+    });
     W.dialog({
-      titel: "Neues Kapitel oder Thema in «" + fach.name + "»",
-      felder: [{ name: "name", label: "Name", platzhalter: "z. B. Kapitel 2: Daten und Codierung", pflicht: true }],
+      titel: "Neues Jahr in «" + fach.name + "»",
+      felder: [{ name: "name", label: "Name", wert: vorschlag || "", platzhalter: "z. B. 1. Sek", pflicht: true, hilfe: "Zum Beispiel 1. Sek, 2. Sek, 3. Sek oder 5. Klasse" }],
       knopf: "Anlegen"
     }).then(function (w) {
       if (!w || !w.name) return;
-      fach.kapitel.push(neuesKapitelObjekt(w.name));
+      var jahr = neuesJahrObjekt(w.name);
+      (fach.jahre = fach.jahre || []).push(jahr);
+      sichern().then(function () {
+        jahrWaehlen(jahr.id);
+      });
+    });
+  }
+
+  function jahrUmbenennen(jahr) {
+    W.dialog({
+      titel: "Jahr umbenennen",
+      felder: [{ name: "name", label: "Name", wert: jahr.name, pflicht: true }],
+      knopf: "Speichern"
+    }).then(function (w) {
+      if (!w || !w.name) return;
+      jahr.name = w.name;
+      sichern().then(zeichnen);
+    });
+  }
+
+  function jahrVerschieben(fach, jahr, schritt) {
+    var i = fach.jahre.indexOf(jahr);
+    var ziel = i + schritt;
+    if (ziel < 0 || ziel >= fach.jahre.length) return;
+    fach.jahre.splice(i, 1);
+    fach.jahre.splice(ziel, 0, jahr);
+    sichern().then(zeichnen);
+  }
+
+  /** Entfernt nur das Jahr; seine Kapitel und Tafeln bleiben (danach «Ohne Jahr») */
+  function jahrEntfernen(fach, jahr) {
+    var n = kapitelImJahr(fach, jahr).length;
+    W.bestaetigen(
+      "Das Jahr «" + jahr.name + "» entfernen?" + (n ? " Die " + mehrzahl(n, "Kapitel", "Kapitel") + " darin bleiben mit allen Tafeln erhalten und stehen danach unter «Ohne Jahr»." : ""),
+      "Entfernen"
+    ).then(function (ja) {
+      if (!ja) return;
+      fach.kapitel.forEach(function (k) {
+        if (k.jahr === jahr.id) delete k.jahr;
+      });
+      fach.jahre = fach.jahre.filter(function (j) {
+        return j !== jahr;
+      });
+      if (!fach.jahre.length) delete fach.jahre;
+      jahrId = null;
+      sichern().then(zeichnen);
+    });
+  }
+
+  function jahrOptionen(fach) {
+    return [{ wert: "", text: "Ohne Jahr" }].concat(
+      jahreVon(fach).map(function (j) {
+        return { wert: j.id, text: j.name };
+      })
+    );
+  }
+
+  // ---------- Kapitel ----------
+
+  function kapitelAnlegen(fach) {
+    var felder = [{ name: "name", label: "Name", platzhalter: "z. B. Kapitel 2: Daten und Codierung", pflicht: true }];
+    if (jahreVon(fach).length) felder.push({ name: "jahr", label: "Jahr", typ: "select", optionen: jahrOptionen(fach), wert: jahrId || "" });
+    W.dialog({
+      titel: "Neues Kapitel oder Thema in «" + fach.name + "»",
+      felder: felder,
+      knopf: "Anlegen"
+    }).then(function (w) {
+      if (!w || !w.name) return;
+      var kapitel = neuesKapitelObjekt(w.name);
+      if (w.jahr) kapitel.jahr = w.jahr;
+      fach.kapitel.push(kapitel);
+      // Im gewaehlten Jahr bleiben, wenn das Kapitel dorthin gehoert, sonst alle zeigen
+      var bleiben = !jahrId || jahrId === kapitel.jahr;
+      sichern().then(function () {
+        jahrWaehlen(bleiben ? jahrId : null);
+      });
+    });
+  }
+
+  function kapitelJahrAendern(fach, kapitel) {
+    W.dialog({
+      titel: "«" + kapitel.name + "» in ein anderes Jahr",
+      felder: [{ name: "jahr", label: "Jahr", typ: "select", optionen: jahrOptionen(fach), wert: kapitel.jahr || "" }],
+      knopf: "Verschieben"
+    }).then(function (w) {
+      if (!w) return;
+      if (w.jahr) kapitel.jahr = w.jahr;
+      else delete kapitel.jahr;
       sichern().then(zeichnen);
     });
   }
@@ -178,12 +299,15 @@
     });
   }
 
+  /** Tauscht mit dem Nachbarn im selben Jahr */
   function kapitelVerschieben(fach, kapitel, schritt) {
+    var gruppe = kapitelImJahr(fach, W.jahrVon(fach, kapitel));
+    var nachbar = gruppe[gruppe.indexOf(kapitel) + schritt];
+    if (!nachbar) return;
     var i = fach.kapitel.indexOf(kapitel);
-    var ziel = i + schritt;
-    if (ziel < 0 || ziel >= fach.kapitel.length) return;
-    fach.kapitel.splice(i, 1);
-    fach.kapitel.splice(ziel, 0, kapitel);
+    var j = fach.kapitel.indexOf(nachbar);
+    fach.kapitel[i] = nachbar;
+    fach.kapitel[j] = kapitel;
     sichern().then(zeichnen);
   }
 
@@ -250,7 +374,7 @@
     var optionen = [];
     sammlung.faecher.forEach(function (f) {
       f.kapitel.forEach(function (k) {
-        optionen.push({ wert: f.id + "|" + k.id, text: f.name + " › " + k.name });
+        optionen.push({ wert: f.id + "|" + k.id, text: W.ortText(f, k) });
       });
     });
     return optionen;
@@ -274,7 +398,7 @@
       });
       ziel.tafeln.push(t.id);
       sichern().then(function () {
-        W.melden("Verschoben nach «" + fach.name + " › " + ziel.name + "».");
+        W.melden("Verschoben nach «" + W.ortText(fach, ziel) + "».");
         zeichnen();
       });
     });
@@ -310,16 +434,30 @@
 
   // ---------- Export und Import ----------
 
-  function fachExport(fach, kapitel) {
+  /** Exportiert ein Fach, nur ein Jahr (teil.jahr) oder nur ein Kapitel (teil.kapitel) */
+  function fachExport(fach, teil) {
+    teil = teil || {};
     var kopie = JSON.parse(JSON.stringify(fach));
-    if (kapitel) {
+    if (teil.kapitel) {
       kopie.kapitel = kopie.kapitel.filter(function (k) {
-        return k.id === kapitel.id;
+        return k.id === teil.kapitel.id;
+      });
+    } else if (teil.jahr) {
+      kopie.kapitel = kopie.kapitel.filter(function (k) {
+        return k.jahr === teil.jahr.id;
       });
     }
+    if (kopie.jahre) {
+      kopie.jahre = kopie.jahre.filter(function (j) {
+        return kopie.kapitel.some(function (k) {
+          return k.jahr === j.id;
+        }) || (!teil.kapitel && !teil.jahr);
+      });
+    }
+    var zusatz = teil.kapitel ? "_" + teil.kapitel.name : teil.jahr ? "_" + teil.jahr.name : "";
     X.sammlungPaket([kopie])
       .then(function (p) {
-        X.jsonSpeichern(p, fach.name + (kapitel ? "_" + kapitel.name : ""));
+        X.jsonSpeichern(p, fach.name + zusatz);
       })
       .catch(fehler);
   }
@@ -523,7 +661,7 @@
 
     var text = el("div", "tafel-karte-text");
     text.appendChild(el("h3", null, t.titel));
-    if (mitOrt) text.appendChild(el("p", "tafel-ort", fach.name + " › " + kapitel.name));
+    if (mitOrt) text.appendChild(el("p", "tafel-ort", W.ortText(fach, kapitel)));
     text.appendChild(el("p", "tafel-daten", mehrzahl(t.seiten.length, "Seite", "Seiten") + " · geändert " + W.datumText(t.geaendert)));
     karte.appendChild(text);
 
@@ -625,16 +763,29 @@
 
   function fachAnsicht(fach) {
     var frag = document.createDocumentFragment();
+    var jahre = jahreVon(fach);
+    var jahr = jahrId && jahreVon(fach).find(function (j) {
+      return j.id === jahrId;
+    });
     var kopf = el("header", "fach-kopf");
     kopf.style.setProperty("--fach", fach.farbe);
     var titel = el("div", "fach-titel");
     titel.appendChild(el("h1", null, fach.name));
-    titel.appendChild(el("p", null, mehrzahl(fach.kapitel.length, "Kapitel", "Kapitel") + " · " + mehrzahl(anzahlTafeln(fach), "Tafel", "Tafeln")));
+    titel.appendChild(
+      el("p", null, (jahre.length ? mehrzahl(jahre.length, "Jahr", "Jahre") + " · " : "") + mehrzahl(fach.kapitel.length, "Kapitel", "Kapitel") + " · " + mehrzahl(anzahlTafeln(fach), "Tafel", "Tafeln"))
+    );
     kopf.appendChild(titel);
     var neuKapitel = el("button", "knopf knopf-haupt", "+ Kapitel / Thema");
     neuKapitel.type = "button";
     neuKapitel.addEventListener("click", function () {
       kapitelAnlegen(fach);
+    });
+    var neuJahr = el("button", "knopf", "+ Jahr");
+    neuJahr.type = "button";
+    neuJahr.id = "jahr-neu";
+    neuJahr.title = "Jahr anlegen, z. B. 1. Sek; darin legst du Kapitel oder Themen an";
+    neuJahr.addEventListener("click", function () {
+      jahrAnlegen(fach);
     });
     var mehr = W.knopf("knopf knopf-icon", "mehr", "Weitere Aktionen für das Fach");
     mehr.setAttribute("aria-haspopup", "true");
@@ -651,54 +802,120 @@
     });
     var kopfKnoepfe = el("div", "fach-knoepfe");
     kopfKnoepfe.appendChild(neuKapitel);
+    kopfKnoepfe.appendChild(neuJahr);
     kopfKnoepfe.appendChild(mehr);
     kopf.appendChild(kopfKnoepfe);
     frag.appendChild(kopf);
 
-    if (!fach.kapitel.length) {
-      frag.appendChild(el("p", "leer-hinweis", "Noch kein Kapitel. Lege mit «+ Kapitel / Thema» das erste an."));
-    }
+    if (jahre.length) frag.appendChild(jahrReiter(fach, jahr));
 
-    fach.kapitel.forEach(function (kapitel, k) {
-      var abschnitt = el("section", "kapitel");
-      abschnitt.dataset.id = kapitel.id;
-      var kk = el("div", "kapitel-kopf");
-      kk.appendChild(el("h2", null, kapitel.name));
-      kk.appendChild(el("span", "kapitel-zahl", mehrzahl(kapitel.tafeln.length, "Tafel", "Tafeln")));
-      var neu = el("button", "knopf knopf-klein knopf-akzent", "+ Tafel");
-      neu.type = "button";
-      neu.addEventListener("click", function () {
-        tafelAnlegen(kapitel);
+    if (jahr) {
+      var imJahr = kapitelImJahr(fach, jahr);
+      if (!imJahr.length) frag.appendChild(el("p", "leer-hinweis", "Noch kein Kapitel oder Thema in «" + jahr.name + "». Lege mit «+ Kapitel / Thema» das erste an."));
+      imJahr.forEach(function (kapitel) {
+        frag.appendChild(kapitelAbschnitt(fach, kapitel));
       });
-      var km = W.knopf("knopf knopf-klein knopf-icon", "mehr", "Weitere Aktionen für das Kapitel «" + kapitel.name + "»");
-      km.setAttribute("aria-haspopup", "true");
-      km.addEventListener("click", function () {
-        W.menue(km, [
-          { text: "Umbenennen …", aktion: function () { kapitelUmbenennen(kapitel); } },
-          k > 0 ? { text: "Nach oben", aktion: function () { kapitelVerschieben(fach, kapitel, -1); } } : null,
-          k < fach.kapitel.length - 1 ? { text: "Nach unten", aktion: function () { kapitelVerschieben(fach, kapitel, 1); } } : null,
-          { text: "PowerPoint oder Tafel importieren …", aktion: function () { importStarten({ fachId: fach.id, kapitelId: kapitel.id }); } },
-          { text: "Kapitel exportieren (Wandtafel-Datei)", aktion: function () { fachExport(fach, kapitel); } },
+    } else if (jahre.length) {
+      // Alle Jahre untereinander, danach Kapitel ohne Jahr
+      jahre.concat([null]).forEach(function (j) {
+        var gruppe = kapitelImJahr(fach, j);
+        if (!j && !gruppe.length) return;
+        var kopfJahr = el("h2", "jahr-titel");
+        var link = el("a", null, j ? j.name : "Ohne Jahr");
+        if (j) link.href = "#fach=" + encodeURIComponent(fach.id) + "&jahr=" + encodeURIComponent(j.id);
+        kopfJahr.appendChild(link);
+        frag.appendChild(kopfJahr);
+        if (!gruppe.length) frag.appendChild(el("p", "leer-hinweis", "Noch kein Kapitel oder Thema in diesem Jahr."));
+        gruppe.forEach(function (kapitel) {
+          frag.appendChild(kapitelAbschnitt(fach, kapitel));
+        });
+      });
+    } else {
+      if (!fach.kapitel.length) frag.appendChild(el("p", "leer-hinweis", "Noch kein Kapitel. Lege mit «+ Kapitel / Thema» das erste an."));
+      fach.kapitel.forEach(function (kapitel) {
+        frag.appendChild(kapitelAbschnitt(fach, kapitel));
+      });
+    }
+    return frag;
+  }
+
+  /** Reiter «Alle», «1. Sek», «2. Sek» … mit Anzahl Tafeln; Aktionen fuer das gewaehlte Jahr */
+  function jahrReiter(fach, jahr) {
+    var reiter = el("nav", "jahr-reiter");
+    reiter.setAttribute("aria-label", "Jahre");
+    function eintrag(text, j, zahl) {
+      var a = el("a", "jahr-knopf" + ((j ? j.id : null) === (jahr ? jahr.id : null) ? " aktiv" : ""));
+      a.href = "#fach=" + encodeURIComponent(fach.id) + (j ? "&jahr=" + encodeURIComponent(j.id) : "&jahr=alle");
+      a.appendChild(document.createTextNode(text));
+      a.appendChild(el("span", "jahr-zahl", String(zahl)));
+      if (a.classList.contains("aktiv")) a.setAttribute("aria-current", "page");
+      reiter.appendChild(a);
+    }
+    eintrag("Alle", null, anzahlTafeln(fach));
+    var jahre = jahreVon(fach);
+    jahre.forEach(function (j) {
+      eintrag(j.name, j, anzahlTafeln(fach, kapitelImJahr(fach, j)));
+    });
+    if (jahr) {
+      var n = jahre.indexOf(jahr);
+      var mehr = W.knopf("knopf knopf-klein knopf-icon", "mehr", "Weitere Aktionen für das Jahr «" + jahr.name + "»");
+      mehr.setAttribute("aria-haspopup", "true");
+      mehr.addEventListener("click", function () {
+        W.menue(mehr, [
+          { text: "Umbenennen …", aktion: function () { jahrUmbenennen(jahr); } },
+          n > 0 ? { text: "Nach links", aktion: function () { jahrVerschieben(fach, jahr, -1); } } : null,
+          n < jahre.length - 1 ? { text: "Nach rechts", aktion: function () { jahrVerschieben(fach, jahr, 1); } } : null,
+          { text: "Jahr exportieren (Wandtafel-Datei)", aktion: function () { fachExport(fach, { jahr: jahr }); } },
           { trenner: true },
-          { text: "Kapitel löschen", gefahr: true, aktion: function () { kapitelLoeschen(fach, kapitel); } }
+          { text: "Jahr entfernen …", gefahr: true, aktion: function () { jahrEntfernen(fach, jahr); } }
         ]);
       });
-      kk.appendChild(neu);
-      kk.appendChild(km);
-      abschnitt.appendChild(kk);
+      reiter.appendChild(mehr);
+    }
+    return reiter;
+  }
 
-      if (!kapitel.tafeln.length) {
-        abschnitt.appendChild(el("p", "leer-hinweis", "Noch keine Tafel in diesem Kapitel."));
-      } else {
-        var raster = el("div", "tafel-raster");
-        kapitel.tafeln.forEach(function (id) {
-          if (tafeln[id]) raster.appendChild(tafelKarte(fach, kapitel, tafeln[id]));
-        });
-        abschnitt.appendChild(raster);
-      }
-      frag.appendChild(abschnitt);
+  function kapitelAbschnitt(fach, kapitel) {
+    var gruppe = kapitelImJahr(fach, W.jahrVon(fach, kapitel));
+    var k = gruppe.indexOf(kapitel);
+    var abschnitt = el("section", "kapitel");
+    abschnitt.dataset.id = kapitel.id;
+    var kk = el("div", "kapitel-kopf");
+    kk.appendChild(el("h2", null, kapitel.name));
+    kk.appendChild(el("span", "kapitel-zahl", mehrzahl(kapitel.tafeln.length, "Tafel", "Tafeln")));
+    var neu = el("button", "knopf knopf-klein knopf-akzent", "+ Tafel");
+    neu.type = "button";
+    neu.addEventListener("click", function () {
+      tafelAnlegen(kapitel);
     });
-    return frag;
+    var km = W.knopf("knopf knopf-klein knopf-icon", "mehr", "Weitere Aktionen für das Kapitel «" + kapitel.name + "»");
+    km.setAttribute("aria-haspopup", "true");
+    km.addEventListener("click", function () {
+      W.menue(km, [
+        { text: "Umbenennen …", aktion: function () { kapitelUmbenennen(kapitel); } },
+        jahreVon(fach).length ? { text: "Jahr ändern …", aktion: function () { kapitelJahrAendern(fach, kapitel); } } : null,
+        k > 0 ? { text: "Nach oben", aktion: function () { kapitelVerschieben(fach, kapitel, -1); } } : null,
+        k < gruppe.length - 1 ? { text: "Nach unten", aktion: function () { kapitelVerschieben(fach, kapitel, 1); } } : null,
+        { text: "PowerPoint oder Tafel importieren …", aktion: function () { importStarten({ fachId: fach.id, kapitelId: kapitel.id }); } },
+        { text: "Kapitel exportieren (Wandtafel-Datei)", aktion: function () { fachExport(fach, { kapitel: kapitel }); } },
+        { trenner: true },
+        { text: "Kapitel löschen", gefahr: true, aktion: function () { kapitelLoeschen(fach, kapitel); } }
+      ]);
+    });
+    kk.appendChild(neu);
+    kk.appendChild(km);
+    abschnitt.appendChild(kk);
+
+    if (!kapitel.tafeln.length) {
+      abschnitt.appendChild(el("p", "leer-hinweis", "Noch keine Tafel in diesem Kapitel."));
+    } else {
+      var raster = el("div", "tafel-raster");
+      kapitel.tafeln.forEach(function (id) {
+        if (tafeln[id]) raster.appendChild(tafelKarte(fach, kapitel, tafeln[id]));
+      });
+      abschnitt.appendChild(raster);
+    }
+    return abschnitt;
   }
 
   function suchAnsicht(begriff) {
@@ -711,7 +928,7 @@
         k.tafeln.forEach(function (id) {
           var t = tafeln[id];
           if (!t) return;
-          var text = [t.titel, f.name, k.name]
+          var text = [t.titel, W.ortText(f, k)]
             .concat(
               t.seiten.map(function (s, i) {
                 return E.seitenTitel(s, i + 1) + " " + s.elemente.map(function (e) {
@@ -732,26 +949,40 @@
   function zeichnen() {
     if (fachId && !fachVonId(fachId)) fachId = null;
     if (!fachId && sammlung.faecher.length && !suche.value.trim()) fachId = sammlung.faecher[0].id;
+    var fach = fachVonId(fachId);
+    if (jahrId && !(fach && jahreVon(fach).some(function (j) {
+      return j.id === jahrId;
+    }))) jahrId = null;
     faecherListe();
     inhalt.innerHTML = "";
     var begriff = suche.value.trim();
     if (begriff) inhalt.appendChild(suchAnsicht(begriff));
     else if (!sammlung.faecher.length) inhalt.appendChild(willkommen());
-    else inhalt.appendChild(fachAnsicht(fachVonId(fachId)));
-    var fach = fachVonId(fachId);
-    document.title = (fach && !begriff ? fach.name + " · " : "") + "Interaktive Wandtafel";
+    else inhalt.appendChild(fachAnsicht(fach));
+    var jahr = fach && jahrId && jahreVon(fach).find(function (j) {
+      return j.id === jahrId;
+    });
+    document.title = (fach && !begriff ? fach.name + (jahr ? " " + jahr.name : "") + " · " : "") + "Interaktive Wandtafel";
   }
 
-  function fachWaehlen(id) {
+  function fachWaehlen(id, jahr) {
     fachId = id;
+    jahrId = jahr || null;
     suche.value = "";
-    if (window.location.hash !== "#fach=" + encodeURIComponent(id)) history.replaceState(null, "", "#fach=" + encodeURIComponent(id));
+    var hash = "#fach=" + encodeURIComponent(id) + (jahrId ? "&jahr=" + encodeURIComponent(jahrId) : "");
+    if (window.location.hash !== hash) history.replaceState(null, "", hash);
     zeichnen();
   }
 
+  function jahrWaehlen(id) {
+    fachWaehlen(fachId, id);
+  }
+
+  /** { fach, jahr } aus der Adresse; jahr=alle zeigt alle Jahre */
   function hashLesen() {
-    var m = window.location.hash.match(/fach=([^&]+)/);
-    return m ? decodeURIComponent(m[1]) : null;
+    var f = window.location.hash.match(/fach=([^&]+)/);
+    var j = window.location.hash.match(/jahr=([^&]+)/);
+    return { fach: f ? decodeURIComponent(f[1]) : null, jahr: j && j[1] !== "alle" ? decodeURIComponent(j[1]) : null };
   }
 
   function speicherInfo() {
@@ -784,8 +1015,8 @@
     });
     suche.addEventListener("input", zeichnen);
     window.addEventListener("hashchange", function () {
-      var id = hashLesen();
-      if (id && id !== fachId) fachWaehlen(id);
+      var ort = hashLesen();
+      if (ort.fach && (ort.fach !== fachId || ort.jahr !== jahrId)) fachWaehlen(ort.fach, ort.jahr);
     });
     // Wandtafel-Dateien auf die Seite ziehen
     document.addEventListener("dragover", function (ev) {
@@ -803,7 +1034,9 @@
 
     laden()
       .then(function () {
-        fachId = hashLesen();
+        var ort = hashLesen();
+        fachId = ort.fach;
+        jahrId = ort.jahr;
         zeichnen();
         speicherInfo();
         // Installierte App: mit der Wandtafel geoeffnete PowerPoint-Datei importieren

@@ -183,6 +183,70 @@
   display: flex;
   gap: 8px;
 }
+/* Jahre (z. B. 1. Sek): Reiter unter dem Fachkopf, Ueberschriften in «Alle» */
+.jahr-reiter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -12px 0 26px;
+}
+.oberflaeche .jahr-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid var(--rand);
+  border-radius: 999px;
+  background: var(--weiss);
+  color: var(--dunkelblau);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(23, 42, 75, 0.06);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.oberflaeche .jahr-knopf:hover {
+  border-color: var(--petrol);
+  background: var(--petrol-hell);
+}
+.oberflaeche .jahr-knopf.aktiv {
+  border-color: var(--dunkelblau);
+  background: var(--dunkelblau);
+  color: var(--weiss);
+}
+.jahr-zahl {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: var(--hellgrau);
+  color: var(--text-leise);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: center;
+}
+.jahr-knopf.aktiv .jahr-zahl {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--weiss);
+}
+.jahr-titel {
+  margin: 34px 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--petrol);
+}
+.jahr-titel:first-of-type {
+  margin-top: 0;
+}
+.oberflaeche .jahr-titel a {
+  color: inherit;
+  text-decoration: none;
+}
+.jahr-titel a[href]:hover {
+  text-decoration: underline;
+}
 .kapitel {
   margin-bottom: 30px;
 }

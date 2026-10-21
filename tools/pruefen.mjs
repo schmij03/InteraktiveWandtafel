@@ -885,6 +885,108 @@ try {
   await ik.close();
   }
 
+  // ---------- Jahre (Fach > Jahr > Kapitel > Tafel) ----------
+  console.log("Jahre im Fach");
+  {
+    const jk = await browser.newContext({ viewport: { width: 1400, height: 860 }, acceptDownloads: true });
+    const jp = await jk.newPage();
+    jp.on("pageerror", (e) => seitenFehler.push("Jahre: " + e.message));
+    const offenerDialog = () => jp.locator("dialog[open]");
+    const bestaetigen = async (knopf) => {
+      await offenerDialog().locator(knopf ? `button:has-text("${knopf}")` : "button[type=submit]").click();
+      await offenerDialog().waitFor({ state: "detached" });
+    };
+    const sammlungLesen = () => jp.evaluate(() => window.Wandtafel.Speicher.sammlung());
+
+    await jp.goto(BASIS);
+    await jp.click("#fach-neu");
+    await offenerDialog().locator('[name="name"]').fill("Geschichte");
+    await offenerDialog().locator('[name="jahr0"]').check();
+    await offenerDialog().locator('[name="jahr1"]').check();
+    await bestaetigen("Anlegen");
+    await jp.waitForSelector(".jahr-reiter");
+    pruefe(
+      JSON.stringify(await jp.locator(".jahr-knopf").evaluateAll((a) => a.map((x) => x.firstChild.textContent))) === JSON.stringify(["Alle", "1. Sek", "2. Sek"]) &&
+        (await jp.locator(".kapitel").count()) === 0,
+      "Neues Fach mit 1. und 2. Sek, ohne Kapitel «Allgemein»"
+    );
+
+    await jp.click("#jahr-neu");
+    pruefe((await offenerDialog().locator('[name="name"]').inputValue()) === "3. Sek", "Vorschlag für das nächste Jahr: 3. Sek");
+    await bestaetigen("Anlegen");
+    await jp.waitForSelector(".jahr-knopf.aktiv:has-text('3. Sek')");
+    pruefe(/jahr=/.test(jp.url()), "Neues Jahr gewählt und in der Adresse");
+
+    await jp.click(".jahr-knopf:has-text('1. Sek')");
+    await jp.waitForSelector(".jahr-knopf.aktiv:has-text('1. Sek')");
+    await jp.click("text=+ Kapitel / Thema");
+    pruefe((await offenerDialog().locator('[name="jahr"] option:checked').textContent()) === "1. Sek", "Neues Thema: gewähltes Jahr vorbelegt");
+    await offenerDialog().locator('[name="name"]').fill("Die Römer");
+    await bestaetigen("Anlegen");
+    await jp.waitForSelector(".kapitel h2:has-text('Die Römer')");
+    await jp.locator(".kapitel", { hasText: "Die Römer" }).locator("text=+ Tafel").click();
+    await offenerDialog().locator('[name="titel"]').fill("Lektion 1: Rom entsteht");
+    await bestaetigen("Anlegen und öffnen");
+    await jp.waitForURL(/tafel\.html\?t=/);
+    await jp.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+    pruefe((await jp.textContent("#ort")) === "Geschichte › 1. Sek › Die Römer", "Ort mit Jahr: Fach › Jahr › Thema");
+    await jp.click("#ort");
+    await jp.waitForSelector(".jahr-knopf.aktiv:has-text('1. Sek')");
+    pruefe((await jp.locator(".tafel-karte").count()) === 1, "Zurück zur Übersicht im selben Jahr");
+
+    await jp.click(".jahr-knopf:has-text('2. Sek')");
+    await jp.waitForSelector(".jahr-knopf.aktiv:has-text('2. Sek')");
+    pruefe((await jp.locator(".kapitel").count()) === 0 && (await jp.locator(".leer-hinweis").count()) === 1, "Anderes Jahr zeigt nur seine Themen");
+
+    await jp.click(".jahr-knopf:has-text('Alle')");
+    await jp.waitForSelector(".jahr-titel");
+    pruefe(
+      JSON.stringify(await jp.locator(".jahr-titel").allTextContents()) === JSON.stringify(["1. Sek", "2. Sek", "3. Sek"]) && (await jp.locator(".kapitel").count()) === 1,
+      "«Alle» zeigt die Jahre mit ihren Themen untereinander"
+    );
+    await foto(jp, "21-jahre");
+
+    // Thema in ein anderes Jahr verschieben
+    await jp.locator(".kapitel", { hasText: "Die Römer" }).locator(".kapitel-kopf button[aria-haspopup]").click();
+    await jp.locator(".klappmenue button", { hasText: "Jahr ändern" }).click();
+    await offenerDialog().locator('[name="jahr"]').selectOption({ label: "2. Sek" });
+    await bestaetigen("Verschieben");
+    let sm = await sammlungLesen();
+    let g = sm.faecher[0];
+    const jahrName = (id) => (g.jahre.find((j) => j.id === id) || {}).name;
+    pruefe(jahrName(g.kapitel[0].jahr) === "2. Sek", "Thema ins Jahr 2. Sek verschoben");
+
+    // Sicherung mit Jahren: Fach loeschen und wieder importieren
+    const dlJ = jp.waitForEvent("download");
+    await jp.click("#sichern");
+    const sicherungJ = path.join(TEMP, "jahre.wandtafel.json");
+    await (await dlJ).saveAs(sicherungJ);
+    await jp.locator(".fach-knoepfe button[aria-haspopup]").click();
+    await jp.locator(".klappmenue button", { hasText: "Fach löschen" }).click();
+    await bestaetigen("Löschen");
+    await jp.waitForSelector(".willkommen");
+    await jp.setInputFiles("#import-datei", sicherungJ);
+    await jp.waitForSelector(".jahr-reiter");
+    sm = await sammlungLesen();
+    g = sm.faecher[0];
+    pruefe(
+      g.jahre.map((j) => j.name).join(",") === "1. Sek,2. Sek,3. Sek" && jahrName(g.kapitel[0].jahr) === "2. Sek" && g.kapitel[0].tafeln.length === 1,
+      "Sicherung mit Jahren wieder importiert"
+    );
+
+    // Jahr entfernen: Themen und Tafeln bleiben (danach «Ohne Jahr»)
+    await jp.click(".jahr-knopf:has-text('2. Sek')");
+    await jp.waitForSelector(".jahr-knopf.aktiv:has-text('2. Sek')");
+    await jp.locator(".jahr-reiter button[aria-haspopup]").click();
+    await jp.locator(".klappmenue button", { hasText: "Jahr entfernen" }).click();
+    await bestaetigen();
+    await jp.waitForSelector(".jahr-titel:has-text('Ohne Jahr')");
+    sm = await sammlungLesen();
+    g = sm.faecher[0];
+    pruefe(g.jahre.length === 2 && !g.kapitel[0].jahr && g.kapitel[0].tafeln.length === 1, "Jahr entfernt, Thema mit Tafel bleibt unter «Ohne Jahr»");
+    await jk.close();
+  }
+
   // ---------- Web-App ohne Internet ----------
   console.log("Web-App ohne Internet");
   {
