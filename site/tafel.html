@@ -29,6 +29,8 @@
     <div class="leiste-gruppe nur-bearbeiten" role="group" aria-label="Einfügen">
       <button type="button" class="t-knopf" data-neu="text" data-icon="text" title="Textfeld">Text</button>
       <button type="button" class="t-knopf" data-neu="notiz" data-icon="notiz" title="Notizzettel">Notiz</button>
+      <button type="button" class="t-knopf" id="formen-knopf" data-icon="form" aria-haspopup="true" aria-expanded="false" title="Form: Rechteck, Kreis, Pfeil, Stern, Sprechblase, …">Form</button>
+      <button type="button" class="t-knopf" data-neu="tabelle" data-icon="tabelle" title="Tabelle">Tabelle</button>
       <button type="button" class="t-knopf" data-neu="bild" data-icon="bild" title="Bild hochladen oder Adresse (auch Ctrl+V oder Hineinziehen)">Bild</button>
       <button type="button" class="t-knopf" data-neu="video" data-icon="video" title="Video: YouTube, Vimeo, Videodatei">Video</button>
       <button type="button" class="t-knopf" data-neu="webseite" data-icon="webseite" title="Webseite oder iFrame-Snippet einbetten">Webseite</button>
@@ -53,6 +55,7 @@
       <button type="button" class="t-knopf nur-icon" id="rueckgaengig" data-icon="zurueck" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig"></button>
       <button type="button" class="t-knopf nur-icon" id="wiederholen" data-icon="vor" title="Wiederholen (Ctrl+Y)" aria-label="Wiederholen"></button>
       <button type="button" class="t-knopf aktiv" id="seiten-knopf" data-icon="seiten" title="Seitenliste ein- und ausblenden">Seiten</button>
+      <button type="button" class="t-knopf" id="notizen-knopf" data-icon="notiz" aria-pressed="false" title="Notizen zur Seite (für die Referentenansicht)">Notizen</button>
       <button type="button" class="t-knopf" id="export-knopf" data-icon="export" aria-haspopup="true" aria-expanded="false" title="Exportieren: HTML, PDF, Wandtafel-Datei">Exportieren</button>
       <button type="button" class="t-knopf t-akzent" id="praesentieren" data-icon="praesentieren" title="Präsentieren (P)">Präsentieren</button>
     </div>
@@ -61,12 +64,21 @@
   <div class="tafel-haupt">
     <aside class="seitenliste" id="seitenliste" aria-label="Seiten">
       <ol id="seiten"></ol>
-      <button type="button" class="knopf seite-neu" id="seite-neu">+ Seite</button>
+      <div class="seite-neu-gruppe">
+        <button type="button" class="knopf seite-neu" id="seite-neu" title="Leere Seite hinzufügen">+ Seite</button>
+        <button type="button" class="knopf seite-layout" id="seite-layout" data-icon="layout" aria-haspopup="true" aria-expanded="false" title="Neue Seite mit Layout: Titelfolie, Titel und Inhalt, …" aria-label="Neue Seite mit Layout"></button>
+      </div>
     </aside>
-    <div class="tafel-rahmen" id="rahmen">
-      <div class="tafel hg-weiss" id="tafel">
-        <div class="ebene-elemente" id="elemente"></div>
-        <canvas class="ebene-zeichnung" id="zeichnung" width="3200" height="1800"></canvas>
+    <div class="tafel-mitte">
+      <div class="tafel-rahmen" id="rahmen">
+        <div class="tafel hg-weiss" id="tafel">
+          <div class="ebene-elemente" id="elemente"></div>
+          <canvas class="ebene-zeichnung" id="zeichnung" width="3200" height="1800"></canvas>
+        </div>
+      </div>
+      <div class="notizen-bereich" id="notizen-bereich" hidden>
+        <label for="notizen">Notizen zu dieser Seite <small>nur für dich, in der Referentenansicht sichtbar</small></label>
+        <textarea id="notizen" placeholder="Klicken, um Notizen hinzuzufügen" spellcheck="true"></textarea>
       </div>
     </div>
   </div>
@@ -79,8 +91,12 @@
     <button type="button" class="p-knopf" id="p-zeichnen" data-icon="stift" title="Zeichnen ein/aus (Z)" aria-label="Zeichnen"></button>
     <button type="button" class="p-knopf" id="p-radierer" data-icon="radierer" title="Radierer" aria-label="Radierer"></button>
     <button type="button" class="p-knopf" id="p-rueckgaengig" data-icon="zurueck" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig"></button>
+    <button type="button" class="p-knopf" id="p-laser" data-icon="laser" aria-pressed="false" title="Laserpointer (L)" aria-label="Laserpointer"></button>
+    <button type="button" class="p-knopf" id="p-referent" data-icon="referent" title="Referentenansicht mit Notizen und nächster Seite (R)" aria-label="Referentenansicht"></button>
     <button type="button" class="p-knopf" id="p-ende" data-icon="schliessen" title="Präsentation beenden (Esc)" aria-label="Präsentation beenden"></button>
   </nav>
+  <div class="laser" id="laser" hidden></div>
+  <div class="abdeckung" id="abdeckung" hidden title="Beliebige Taste oder Klick: weiter präsentieren"></div>
 
   <input type="file" id="bild-datei" accept="image/*" hidden>
   <input type="file" id="import-datei" accept=".json,.html,application/json,text/html" hidden>
@@ -89,6 +105,7 @@
   <script src="js/qrcode.js"></script>
   <script src="js/elemente.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/pptx.js"></script>
   <script src="js/tafel.js"></script>
 </body>
 </html>

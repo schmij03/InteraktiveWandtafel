@@ -271,14 +271,84 @@ body[data-modus="bearbeiten"] .nur-zeichnen {
   width: 100%;
   height: 100%;
 }
+.seite-neu-gruppe {
+  display: flex;
+  gap: 6px;
+}
 .seite-neu {
-  width: 100%;
+  flex: 1;
+}
+.seite-layout {
+  flex: none;
+  width: 44px;
+  padding: 8px;
+}
+.seite-layout svg {
+  width: 22px;
+  height: 22px;
+}
+.seite-eintrag.ausgeblendet .seite-wahl {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.seite-eintrag.ausgeblendet .seite-nr {
+  text-decoration: line-through;
+}
+.seite-eintrag.wird-gezogen {
+  opacity: 0.4;
+}
+.seite-eintrag.ablegen .seite-wahl {
+  box-shadow: 0 -3px 0 var(--orange);
+}
+.tafel-mitte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 .tafel-rahmen {
   flex: 1;
   position: relative;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
+}
+
+/* Notizen zur Seite, wie der Notizbereich in PowerPoint */
+.notizen-bereich {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 150px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--grau);
+  background: var(--weiss);
+}
+.notizen-bereich[hidden] {
+  display: none;
+}
+.notizen-bereich label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--petrol);
+}
+.notizen-bereich small {
+  font-weight: 400;
+  color: var(--text-leise);
+}
+.notizen-bereich textarea {
+  flex: 1;
+  resize: none;
+  padding: 8px 10px;
+  border: 1px solid #c9d3da;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 17px;
+}
+body.praesentieren .notizen-bereich {
+  display: none;
 }
 
 /* Die Tafel: feste Flaeche 1600 x 900, per transform skaliert */
@@ -1293,4 +1363,433 @@ body.drucken {
     margin: 20px auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
+}
+
+/* ---------- Wie in PowerPoint ---------- */
+
+/* Formen: Griffleiste oberhalb, Form fuellt das ganze Element */
+.element-form {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.element-form .griff {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  min-width: 200px;
+  border-radius: 10px 10px 0 0;
+  background: rgba(244, 248, 250, 0.97);
+  border: 1px solid #c9d3da;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.element-form.griff-innen .griff {
+  bottom: auto;
+  top: 0;
+  border-radius: 10px;
+  z-index: 3;
+}
+.element-form:hover .griff,
+.element-form.gewaehlt .griff {
+  opacity: 1;
+}
+.element-form .koerper {
+  overflow: visible;
+  border-radius: 0;
+  cursor: grab;
+}
+.element-form.gewaehlt {
+  border-color: var(--orange);
+  border-style: dashed;
+  box-shadow: none;
+}
+.element-form:hover:not(.gewaehlt) {
+  border-color: rgba(120, 140, 160, 0.5);
+  border-style: dashed;
+}
+.form-bild {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.form-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.form-text.form-oben {
+  justify-content: flex-start;
+}
+.form-text.form-unten {
+  justify-content: flex-end;
+}
+.element-form .textfeld {
+  height: auto;
+  max-height: 100%;
+  padding: 4px 6px;
+  pointer-events: none;
+  cursor: grab;
+}
+.element-form.schreibt .textfeld {
+  pointer-events: auto;
+  cursor: text;
+}
+.element-form .textfeld:empty::before {
+  content: "";
+}
+.element-form.gewaehlt .textfeld:empty::before {
+  content: "Doppelklick für Text";
+  font-size: 18px;
+}
+body.praesentieren .element-form .koerper,
+.ansicht-seite .element-form .koerper {
+  cursor: default;
+}
+
+/* Listen in Textfeldern */
+.textfeld.liste-punkte > div,
+.textfeld.liste-nummern > div {
+  position: relative;
+  padding-left: 1.2em;
+}
+.textfeld.liste-punkte > div::before {
+  content: "•";
+  position: absolute;
+  left: 0.2em;
+}
+.textfeld.liste-nummern {
+  counter-reset: nummer;
+}
+.textfeld.liste-nummern > div {
+  counter-increment: nummer;
+  padding-left: 1.6em;
+}
+.textfeld.liste-nummern > div::before {
+  content: counter(nummer) ".";
+  position: absolute;
+  left: 0;
+}
+
+/* Tabelle */
+.tabelle-rahmen {
+  height: 100%;
+  overflow: auto;
+  padding: 8px;
+}
+.tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  line-height: 1.25;
+  color: inherit;
+}
+.tabelle th,
+.tabelle td {
+  min-width: 40px;
+  height: 1.9em;
+  padding: 6px 10px;
+  border: 1px solid #9fb4c2;
+  text-align: inherit;
+  vertical-align: top;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+.tabelle tr:nth-child(even) td {
+  background: #f1f6f9;
+}
+.tabelle.mit-kopf th {
+  background: var(--petrol);
+  color: var(--weiss);
+  font-weight: 700;
+}
+.tabelle [contenteditable]:focus {
+  box-shadow: inset 0 0 0 2px var(--orange);
+}
+
+/* Animationen */
+.anim-marke {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  z-index: 4;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #7b3fa0;
+  color: var(--weiss);
+  font: 700 17px/28px var(--schrift);
+  text-align: center;
+  pointer-events: none;
+}
+.tafel.zeichnen .anim-marke {
+  display: none;
+}
+.anim-wartet {
+  visibility: hidden;
+}
+.anim-einblenden {
+  animation: anim-einblenden 0.7s ease both;
+}
+.anim-fliegen {
+  animation: anim-fliegen 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.anim-zoomen {
+  animation: anim-zoomen 0.5s cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+.anim-wischen {
+  animation: anim-wischen 0.7s ease both;
+}
+@keyframes anim-einblenden {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes anim-fliegen {
+  from {
+    opacity: 0;
+    translate: 0 320px;
+  }
+}
+@keyframes anim-zoomen {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+@keyframes anim-wischen {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Folienuebergaenge */
+.tafel.ueb-blenden {
+  animation: ueb-blenden 0.6s ease both;
+}
+.tafel.ueb-schieben {
+  animation: ueb-schieben 0.6s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.tafel.ueb-schieben.rueckwaerts {
+  animation-name: ueb-schieben-zurueck;
+}
+.tafel.ueb-wischen {
+  animation: ueb-wischen 0.7s ease both;
+}
+.tafel.ueb-wischen.rueckwaerts {
+  animation-name: ueb-wischen-zurueck;
+}
+.tafel.ueb-kreis {
+  animation: ueb-kreis 0.8s ease both;
+}
+@keyframes ueb-blenden {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ueb-schieben {
+  from {
+    translate: 100vw 0;
+  }
+}
+@keyframes ueb-schieben-zurueck {
+  from {
+    translate: -100vw 0;
+  }
+}
+@keyframes ueb-wischen {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes ueb-wischen-zurueck {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes ueb-kreis {
+  from {
+    clip-path: circle(0% at 50% 50%);
+  }
+  to {
+    clip-path: circle(75% at 50% 50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tafel[class*="ueb-"],
+  .element[class*="anim-"] {
+    animation-duration: 0.01s !important;
+  }
+}
+
+/* Hilfslinien beim Verschieben */
+.hilfslinie {
+  position: absolute;
+  z-index: 99990;
+  pointer-events: none;
+  background: #e4572e;
+}
+.hilfslinie.senkrecht {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+}
+.hilfslinie.waagrecht {
+  left: 0;
+  right: 0;
+  height: 1px;
+  margin-top: -0.5px;
+}
+
+/* Laserpointer und abgedunkelter Bildschirm */
+body.mit-laser .tafel-rahmen,
+body.mit-laser .tafel-rahmen * {
+  cursor: none !important;
+}
+.laser {
+  position: fixed;
+  z-index: 200;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 18%, #ff2a2a 30%, rgba(255, 0, 0, 0.55) 60%, rgba(255, 0, 0, 0) 72%);
+  box-shadow: 0 0 14px 4px rgba(255, 0, 0, 0.55);
+  pointer-events: none;
+}
+.laser[hidden] {
+  display: none;
+}
+.abdeckung {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  cursor: pointer;
+}
+.abdeckung[hidden] {
+  display: none;
+}
+.abdeckung-schwarz {
+  background: #000;
+}
+.abdeckung-weiss {
+  background: #fff;
+}
+
+/* Referentenansicht (eigenes Fenster) */
+body.referent-seite {
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1c2230;
+  color: #f2f5f7;
+  font-family: var(--schrift);
+}
+.ref-kopf,
+.ref-fuss {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: #121722;
+}
+.ref-kopf strong {
+  flex: 1;
+  font-size: 18px;
+}
+.ref-zeit,
+.ref-uhr {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ref-uhr {
+  color: #9fb4c2;
+}
+.ref-haupt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 22px;
+  padding: 14px 18px;
+}
+.ref-links {
+  flex: none;
+}
+.ref-rechts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ref-haupt h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  color: #b9c9d4;
+}
+.ref-rechts h2 + * {
+  margin-bottom: 14px;
+}
+.ref-vorschau {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+.ref-vorschau .tafel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+.ref-vorschau .element:not(.mit-titel) .griff,
+.ref-vorschau .spot-knopf {
+  display: none;
+}
+.ref-notizen {
+  flex: 1;
+  min-height: 80px;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2933;
+  font-size: 24px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+.ref-notizen.leer {
+  color: #7d8a94;
+  font-style: italic;
+}
+.ref-fuss {
+  justify-content: center;
+}
+.ref-fuss .knopf {
+  min-width: 140px;
+  font-size: 18px;
+}
+.ref-fuss .knopf,
+.ref-kopf .knopf {
+  font-family: inherit;
 }
