@@ -48,6 +48,10 @@
   var gewaehlt = null;
   var verlauf = [];
   var verlaufPos = -1;
+  var animation = null; // Animationen der Seite beim Praesentieren
+  var referent = null; // Fenster der Referentenansicht
+  var FORMATIERBAR = { text: true, notiz: true, form: true, tabelle: true };
+  var KOPIE_TYP = "application/x-wandtafel-element";
 
   function seite() {
     return tafel.seiten[seiteNr];
@@ -257,13 +261,25 @@
       W.menue(mehr, [
         { text: "Im Spotlight zeigen", aktion: function () { E.spotlight(knoten, true); } },
         e.typ === "bild" ? { text: "Bild bemalen …", aktion: function () { bildBemalen(e); } } : null,
-        { text: "Duplizieren", aktion: function () { duplizieren(e); } },
+        FORMATIERBAR[e.typ] ? { text: "Format …", aktion: function () { formatBearbeiten(e); } } : null,
+        e.typ === "tabelle" ? { text: e.daten.kopf ? "Kopfzeile ausschalten" : "Kopfzeile einschalten", aktion: function () { e.daten.kopf = !e.daten.kopf; neuBauen(e); festhalten(); } } : null,
+        { text: e.anim ? "Animation ändern …" : "Animation hinzufügen …", aktion: function () { animationBearbeiten(e); } },
+        { text: "Auf der Seite ausrichten …", aktion: function () { ausrichten(e, mehr); } },
+        { text: "Duplizieren (Ctrl+D)", aktion: function () { duplizieren(e); } },
         { text: "Auf andere Seite verschieben …", aktion: function () { elementVerschieben(e, mehr); } },
+        { text: "In den Vordergrund", aktion: function () { nachVorne(e, knoten); festhalten(); } },
         { text: "Nach hinten legen", aktion: function () { nachHinten(e, knoten); } },
         { trenner: true },
         { text: "Löschen", gefahr: true, aktion: function () { entfernen(e.id); } }
       ]);
     });
+    if (werkzeuge && FORMATIERBAR[e.typ]) {
+      var format = W.knopf("g-knopf", "format", "Format: Schrift, Farbe, Ausrichtung, Liste …");
+      format.addEventListener("click", function () {
+        formatBearbeiten(e);
+      });
+      werkzeuge.appendChild(format);
+    }
     var weg = W.knopf("g-knopf", "muell", "Löschen (Entf)");
     weg.addEventListener("click", function () {
       entfernen(e.id);
@@ -298,14 +314,230 @@
     });
 
     E.inhaltBauen(e, teile, kontext);
-    // Bilder lassen sich auch am Inhalt verschieben
-    if (e.typ === "bild") verschiebbar(teile.koerper, knoten, e);
+    // Bilder und Formen lassen sich auch am Inhalt verschieben
+    if (e.typ === "bild" || e.typ === "form") verschiebbar(teile.koerper, knoten, e);
     return knoten;
   }
 
+  /** Element nach einer Aenderung der Einstellungen neu aufbauen */
+  function neuBauen(e) {
+    var alt = knotenVon(e.id);
+    if (!alt) return;
+    E.stoppen(e.id);
+    alt.replaceWith(elementBauen(e));
+    waehlen(e.id);
+  }
+
+  // ---------- Format, Animation, Ausrichten (wie in PowerPoint) ----------
+
+  function formatBearbeiten(e) {
+    var d = e.daten;
+    var felder = [];
+    if (e.typ === "form") {
+      felder.push(
+        { name: "form", label: "Form", typ: "select", wert: E.formVon(d.form).wert, optionen: E.FORMEN },
+        { name: "fuellung", label: "Füllfarbe", typ: "farbwert", wert: d.fuellung && d.fuellung !== "keine" ? d.fuellung : E.FORM_STANDARD.fuellung },
+        { name: "ohneFuellung", label: "Ohne Füllung (durchsichtig)", typ: "haken", wert: d.fuellung === "keine" },
+        { name: "rand", label: "Randfarbe", typ: "farbwert", wert: d.rand || E.FORM_STANDARD.rand },
+        { name: "randDicke", label: "Randdicke in Punkten (0 = ohne Rand)", typ: "zahl", wert: d.randDicke != null ? d.randDicke : E.FORM_STANDARD.randDicke }
+      );
+    }
+    felder.push(
+      { name: "schrift", label: "Schriftart", typ: "select", wert: d.schrift || "", optionen: E.SCHRIFTEN },
+      { name: "groesse", label: "Schriftgrösse", typ: "zahl", wert: d.groesse || E.standardGroesse(e.typ) }
+    );
+    if (e.typ !== "notiz") felder.push({ name: "farbe", label: "Schriftfarbe", typ: "farbwert", wert: d.farbe || "#1f2933" });
+    felder.push(
+      { name: "fett", label: "Fett", typ: "haken", wert: d.fett },
+      { name: "kursiv", label: "Kursiv", typ: "haken", wert: d.kursiv },
+      { name: "unterstrichen", label: "Unterstrichen", typ: "haken", wert: d.unterstrichen },
+      {
+        name: "ausrichtung",
+        label: "Ausrichtung",
+        typ: "select",
+        wert: d.ausrichtung || (e.typ === "form" ? "center" : "left"),
+        optionen: [
+          { wert: "left", text: "Linksbündig" },
+          { wert: "center", text: "Zentriert" },
+          { wert: "right", text: "Rechtsbündig" },
+          { wert: "justify", text: "Blocksatz" }
+        ]
+      }
+    );
+    if (e.typ !== "tabelle") {
+      felder.push({
+        name: "liste",
+        label: "Aufzählung",
+        typ: "select",
+        wert: d.liste || "",
+        optionen: [
+          { wert: "", text: "Keine" },
+          { wert: "punkte", text: "• Aufzählungszeichen" },
+          { wert: "nummern", text: "1. Nummerierung" }
+        ]
+      });
+    }
+    if (e.typ === "form") {
+      felder.push({
+        name: "vertikal",
+        label: "Text in der Form",
+        typ: "select",
+        wert: d.vertikal || "mitte",
+        optionen: [
+          { wert: "oben", text: "oben" },
+          { wert: "mitte", text: "in der Mitte" },
+          { wert: "unten", text: "unten" }
+        ]
+      });
+    }
+    W.dialog({ titel: "Format: " + (d.titel || E.NAMEN[e.typ]), felder: felder, knopf: "Übernehmen" }).then(function (w) {
+      if (!w) return;
+      if (e.typ === "form") {
+        d.form = w.form;
+        d.fuellung = w.ohneFuellung ? "keine" : w.fuellung;
+        d.rand = w.rand;
+        d.randDicke = begrenzen(parseInt(w.randDicke, 10) || 0, 0, 30);
+        d.vertikal = w.vertikal === "mitte" ? "" : w.vertikal;
+      }
+      d.schrift = w.schrift;
+      d.groesse = begrenzen(parseInt(w.groesse, 10) || E.standardGroesse(e.typ), 8, 300);
+      if (w.farbe) d.farbe = w.farbe;
+      d.fett = w.fett;
+      d.kursiv = w.kursiv;
+      d.unterstrichen = w.unterstrichen;
+      d.ausrichtung = w.ausrichtung;
+      if (e.typ !== "tabelle") d.liste = w.liste;
+      neuBauen(e);
+      festhalten();
+    });
+  }
+
+  function animationBearbeiten(e) {
+    var hoechste = seite().elemente.reduce(function (m, x) {
+      return x.anim && x !== e ? Math.max(m, x.anim.nr || 1) : m;
+    }, 0);
+    W.dialog({
+      titel: "Animation",
+      felder: [
+        { name: "effekt", label: "Effekt beim Präsentieren", typ: "select", wert: e.anim ? e.anim.effekt : "einblenden", optionen: [{ wert: "", text: "Keine Animation (immer sichtbar)" }].concat(E.EFFEKTE) },
+        { name: "nr", label: "Reihenfolge (gleiche Zahl: erscheinen zusammen)", typ: "zahl", wert: e.anim ? e.anim.nr || 1 : hoechste + 1 },
+        { typ: "hinweis", text: "Beim Präsentieren sind Elemente mit Animation zuerst versteckt. Jedes «Weiter» (Pfeil rechts, Leertaste, Presenter) zeigt die nächste Nummer, danach kommt die nächste Seite." }
+      ],
+      knopf: "Übernehmen"
+    }).then(function (w) {
+      if (!w) return;
+      if (w.effekt) e.anim = { effekt: w.effekt, nr: begrenzen(parseInt(w.nr, 10) || 1, 1, 99) };
+      else delete e.anim;
+      neuBauen(e);
+      festhalten();
+    });
+  }
+
+  function ausrichten(e, anker) {
+    function setzen(x, y) {
+      if (x != null) e.x = Math.round(x);
+      if (y != null) e.y = Math.round(y);
+      var k = knotenVon(e.id);
+      if (k) E.lage(k, e);
+      festhalten();
+    }
+    W.menue(anker, [
+      { text: "Links", aktion: function () { setzen(0, null); } },
+      { text: "Horizontal zentrieren", aktion: function () { setzen((BREITE - e.b) / 2, null); } },
+      { text: "Rechts", aktion: function () { setzen(BREITE - e.b, null); } },
+      { trenner: true },
+      { text: "Oben", aktion: function () { setzen(null, 0); } },
+      { text: "Vertikal zentrieren", aktion: function () { setzen(null, (HOEHE - e.h) / 2); } },
+      { text: "Unten", aktion: function () { setzen(null, HOEHE - e.h); } },
+      { trenner: true },
+      { text: "Mitte der Seite", aktion: function () { setzen((BREITE - e.b) / 2, (HOEHE - e.h) / 2); } }
+    ]);
+  }
+
+  // ---------- Hilfslinien beim Verschieben ----------
+
+  var EINRASTEN = 8;
+
+  /** Rastet an Seitenrand, Seitenmitte und an Kanten und Mitten anderer Elemente ein */
+  function einrasten(e, x, y) {
+    var xs = [0, BREITE / 2, BREITE];
+    var ys = [0, HOEHE / 2, HOEHE];
+    seite().elemente.forEach(function (a) {
+      if (a === e) return;
+      xs.push(a.x, a.x + a.b / 2, a.x + a.b);
+      ys.push(a.y, a.y + a.h / 2, a.y + a.h);
+    });
+    function bester(ziele, wert, groesse) {
+      var b = null;
+      [0, groesse / 2, groesse].forEach(function (versatz) {
+        ziele.forEach(function (z) {
+          var abstand = Math.abs(z - (wert + versatz));
+          if (abstand <= EINRASTEN && (!b || abstand < b.abstand)) b = { abstand: abstand, wert: z - versatz, linie: z };
+        });
+      });
+      return b;
+    }
+    var bx = bester(xs, x, e.b);
+    var by = bester(ys, y, e.h);
+    return { x: bx ? bx.wert : x, y: by ? by.wert : y, senkrecht: bx && bx.linie, waagrecht: by && by.linie };
+  }
+
+  function hilfslinienZeigen(r) {
+    hilfslinienWeg();
+    if (r && r.senkrecht != null) {
+      var s = el("div", "hilfslinie senkrecht");
+      s.style.left = r.senkrecht + "px";
+      ebene.appendChild(s);
+    }
+    if (r && r.waagrecht != null) {
+      var w = el("div", "hilfslinie waagrecht");
+      w.style.top = r.waagrecht + "px";
+      ebene.appendChild(w);
+    }
+  }
+
+  function hilfslinienWeg() {
+    ebene.querySelectorAll(".hilfslinie").forEach(function (l) {
+      l.remove();
+    });
+  }
+
   function duplizieren(e) {
-    var daten = JSON.parse(JSON.stringify(e.daten));
-    hinzufuegen(e.typ, daten, { x: e.x + 30, y: e.y + 30, b: e.b, h: e.h });
+    elementEinfuegen(JSON.stringify(e));
+  }
+
+  /** Kopiertes Element (JSON) einfuegen: auf derselben Seite versetzt, sonst an gleicher Stelle */
+  function elementEinfuegen(json) {
+    var x;
+    try {
+      x = JSON.parse(json);
+    } catch (f) {
+      return;
+    }
+    if (!x || !E.NAMEN[x.typ] || typeof x.daten !== "object") return;
+    var versatz = finden(x.id) ? 30 : 0;
+    var knoten = hinzufuegen(x.typ, JSON.parse(JSON.stringify(x.daten)), { x: x.x + versatz, y: x.y + versatz, b: x.b, h: x.h });
+    if (x.anim) {
+      var neu = finden(knoten.dataset.id);
+      neu.anim = { effekt: x.anim.effekt, nr: x.anim.nr };
+      neuBauen(neu);
+      festhalten();
+    }
+  }
+
+  function formenMenue(anker) {
+    W.menue(
+      anker,
+      E.FORMEN.map(function (f) {
+        return {
+          text: f.text,
+          aktion: function () {
+            var rund = f.wert === "ellipse" || f.wert === "stern" || f.wert === "sechseck";
+            hinzufuegen("form", { form: f.wert }, rund ? { b: 280, h: 280 } : null);
+          }
+        };
+      })
+    );
   }
 
   /** Element auf eine andere Seite verschieben (wie «Seite …» bei fobizz) */
@@ -500,8 +732,17 @@
       anfasser.setPointerCapture(start.pointerId);
       function bewegen(ev) {
         var p = tafelPunkt(ev);
-        e.x = Math.round(begrenzen(x0 + p.x - p0.x, -e.b + 60, BREITE - 60));
-        e.y = Math.round(begrenzen(y0 + p.y - p0.y, 0, HOEHE - 40));
+        var x = x0 + p.x - p0.x;
+        var y = y0 + p.y - p0.y;
+        // Hilfslinien wie in PowerPoint; mit Alt frei verschieben
+        var r = ev.altKey ? null : einrasten(e, x, y);
+        if (r) {
+          x = r.x;
+          y = r.y;
+        }
+        hilfslinienZeigen(r);
+        e.x = Math.round(begrenzen(x, -e.b + 60, BREITE - 60));
+        e.y = Math.round(begrenzen(y, 0, HOEHE - 40));
         E.lage(knoten, e);
       }
       function ende() {
@@ -509,6 +750,7 @@
         anfasser.removeEventListener("pointerup", ende);
         anfasser.removeEventListener("pointercancel", ende);
         knoten.classList.remove("zieht");
+        hilfslinienWeg();
         festhalten();
       }
       knoten.classList.add("zieht");
@@ -620,8 +862,10 @@
     waehlen(gewaehlt);
     hintergrundSetzen();
     zeichnungNeu();
+    animation = praesentiert ? E.animationen(ebene, seite()) : null;
     seitenListeBauen();
     praesAnzeige();
+    notizenZeigen();
   }
 
   function zuSeite(nr) {
@@ -639,8 +883,86 @@
     }
   }
 
-  function seiteHinzufuegen(kopieVon) {
+  // Folienlayouts wie in PowerPoint: Platzhalter-Texte, die beim Praesentieren leer unsichtbar sind
+  function titelText(y, h, groesse, ausrichtung, platzhalter) {
+    return { typ: "text", x: 80, y: y, b: 1440, h: h, daten: { platzhalter: platzhalter || "Titel hinzufügen", groesse: groesse, fett: true, ausrichtung: ausrichtung } };
+  }
+  function inhaltText(x, y, b, h) {
+    return { typ: "text", x: x, y: y, b: b, h: h, daten: { platzhalter: "Text hinzufügen", groesse: 36, liste: "punkte" } };
+  }
+  var LAYOUTS = [
+    {
+      wert: "titelfolie",
+      text: "Titelfolie",
+      elemente: function () {
+        return [titelText(230, 210, 84, "center"), { typ: "text", x: 200, y: 470, b: 1200, h: 140, daten: { platzhalter: "Untertitel hinzufügen", groesse: 44, ausrichtung: "center", farbe: "#065a82" } }];
+      }
+    },
+    {
+      wert: "titelInhalt",
+      text: "Titel und Inhalt",
+      elemente: function () {
+        return [titelText(30, 150, 60, "left"), inhaltText(80, 200, 1440, 660)];
+      }
+    },
+    {
+      wert: "zweiInhalte",
+      text: "Zwei Inhalte",
+      elemente: function () {
+        return [titelText(30, 150, 60, "left"), inhaltText(80, 200, 700, 660), inhaltText(820, 200, 700, 660)];
+      }
+    },
+    {
+      wert: "vergleich",
+      text: "Vergleich",
+      elemente: function () {
+        function kopf(x) {
+          return { typ: "text", x: x, y: 190, b: 700, h: 110, daten: { platzhalter: "Überschrift", groesse: 40, fett: true, farbe: "#065a82" } };
+        }
+        return [titelText(30, 150, 60, "left"), kopf(80), kopf(820), inhaltText(80, 300, 700, 560), inhaltText(820, 300, 700, 560)];
+      }
+    },
+    {
+      wert: "nurTitel",
+      text: "Nur Titel",
+      elemente: function () {
+        return [titelText(30, 150, 60, "left")];
+      }
+    },
+    {
+      wert: "abschnitt",
+      text: "Abschnittsüberschrift",
+      elemente: function () {
+        return [titelText(300, 190, 76, "left", "Abschnitt hinzufügen"), { typ: "text", x: 80, y: 500, b: 1440, h: 120, daten: { platzhalter: "Text hinzufügen", groesse: 36, farbe: "#065a82" } }];
+      }
+    }
+  ];
+
+  function layoutMenue(anker) {
+    W.menue(
+      anker,
+      [{ text: "Leere Seite", aktion: function () { seiteHinzufuegen(); } }].concat(
+        LAYOUTS.map(function (l) {
+          return {
+            text: l.text,
+            aktion: function () {
+              seiteHinzufuegen(null, l);
+            }
+          };
+        })
+      )
+    );
+  }
+
+  function seiteHinzufuegen(kopieVon, layout) {
     var neu = kopieVon != null ? JSON.parse(JSON.stringify(tafel.seiten[kopieVon])) : S.leereSeite();
+    if (layout) {
+      neu.elemente = layout.elemente().map(function (x, i) {
+        x.id = W.neueId("e");
+        x.z = i + 1;
+        return x;
+      });
+    }
     neu.id = W.neueId("s");
     if (kopieVon != null) {
       neu.elemente.forEach(function (e) {
@@ -675,12 +997,43 @@
   }
 
   function seiteVerschieben(nr, schritt) {
-    var ziel = nr + schritt;
-    if (ziel < 0 || ziel >= tafel.seiten.length) return;
+    seiteVerschiebenNach(nr, nr + schritt);
+  }
+
+  function seiteVerschiebenNach(nr, ziel) {
+    if (ziel < 0 || ziel >= tafel.seiten.length || ziel === nr) return;
     var s = tafel.seiten.splice(nr, 1)[0];
     tafel.seiten.splice(ziel, 0, s);
     seiteNr = ziel;
     seiteZeigen();
+    festhalten();
+  }
+
+  function uebergangWaehlen(nr) {
+    var s = tafel.seiten[nr];
+    W.dialog({
+      titel: "Übergang zu Seite " + (nr + 1),
+      felder: [
+        { name: "art", label: "Übergang beim Präsentieren", typ: "select", wert: s.uebergang || "", optionen: E.UEBERGAENGE },
+        { name: "alle", label: "Für alle Seiten übernehmen", typ: "haken", wert: false }
+      ],
+      knopf: "Übernehmen"
+    }).then(function (w) {
+      if (!w) return;
+      (w.alle ? tafel.seiten : [s]).forEach(function (x) {
+        if (w.art) x.uebergang = w.art;
+        else delete x.uebergang;
+      });
+      festhalten();
+      // Vorschau wie in PowerPoint
+      if (nr === seiteNr) E.uebergang(tafelEl, w.art);
+    });
+  }
+
+  function seiteAusblenden(nr) {
+    var s = tafel.seiten[nr];
+    if (s.ausgeblendet) delete s.ausgeblendet;
+    else s.ausgeblendet = true;
     festhalten();
   }
 
@@ -701,14 +1054,54 @@
     var liste = document.getElementById("seiten");
     liste.innerHTML = "";
     tafel.seiten.forEach(function (s, i) {
-      var li = el("li", "seite-eintrag" + (i === seiteNr ? " aktiv" : ""));
+      var li = el("li", "seite-eintrag" + (i === seiteNr ? " aktiv" : "") + (s.ausgeblendet ? " ausgeblendet" : ""));
+      // Seiten per Ziehen umsortieren
+      li.draggable = true;
+      li.addEventListener("dragstart", function (ev) {
+        ev.dataTransfer.setData("application/x-wandtafel-seite", String(i));
+        ev.dataTransfer.effectAllowed = "move";
+        li.classList.add("wird-gezogen");
+      });
+      li.addEventListener("dragend", function () {
+        li.classList.remove("wird-gezogen");
+      });
+      li.addEventListener("dragover", function (ev) {
+        if (ev.dataTransfer.types.indexOf("application/x-wandtafel-seite") === -1) return;
+        ev.preventDefault();
+        li.classList.add("ablegen");
+      });
+      li.addEventListener("dragleave", function () {
+        li.classList.remove("ablegen");
+      });
+      li.addEventListener("drop", function (ev) {
+        var von = ev.dataTransfer.getData("application/x-wandtafel-seite");
+        li.classList.remove("ablegen");
+        if (von === "") return;
+        ev.preventDefault();
+        seiteVerschiebenNach(parseInt(von, 10), i);
+      });
       var k = el("button", "seite-wahl");
       k.type = "button";
-      k.title = "Seite " + (i + 1) + " zeigen (Doppelklick: benennen)";
+      k.title = "Seite " + (i + 1) + " zeigen (Doppelklick: benennen, Ziehen: verschieben)" + (s.ausgeblendet ? " · beim Präsentieren ausgeblendet" : "");
       k.appendChild(el("span", "seite-nr", String(i + 1)));
       var info = el("span", "seite-info");
       info.appendChild(el("span", "seite-name", E.seitenTitel(s, i + 1)));
-      info.appendChild(el("small", null, s.elemente.length + (s.elemente.length === 1 ? " Element" : " Elemente") + (s.striche.length ? " · Zeichnung" : "")));
+      var mitAnim = s.elemente.some(function (e) {
+        return e.anim;
+      });
+      info.appendChild(
+        el(
+          "small",
+          null,
+          s.elemente.length +
+            (s.elemente.length === 1 ? " Element" : " Elemente") +
+            (s.striche.length ? " · Zeichnung" : "") +
+            (mitAnim ? " · Animation" : "") +
+            (s.uebergang ? " · Übergang" : "") +
+            (s.notizen ? " · Notizen" : "") +
+            (s.ausgeblendet ? " · ausgeblendet" : "")
+        )
+      );
       k.appendChild(info);
       if (i === seiteNr) k.setAttribute("aria-current", "page");
       k.addEventListener("click", function () {
@@ -724,6 +1117,8 @@
         W.menue(mehr, [
           { text: "Benennen …", aktion: function () { seiteUmbenennen(i); } },
           { text: "Duplizieren", aktion: function () { seiteHinzufuegen(i); } },
+          { text: "Übergang …", aktion: function () { uebergangWaehlen(i); } },
+          { text: s.ausgeblendet ? "Beim Präsentieren wieder zeigen" : "Beim Präsentieren ausblenden", aktion: function () { seiteAusblenden(i); } },
           i > 0 ? { text: "Nach oben", aktion: function () { seiteVerschieben(i, -1); } } : null,
           i < tafel.seiten.length - 1 ? { text: "Nach unten", aktion: function () { seiteVerschieben(i, 1); } } : null,
           { trenner: true },
@@ -820,11 +1215,48 @@
 
   // ---------- Praesentieren ----------
 
+  /** Naechste beim Praesentieren sichtbare Seite in Richtung schritt (ausgeblendete ueberspringen) */
+  function sichtbareSeite(von, schritt) {
+    for (var i = von + schritt; i >= 0 && i < tafel.seiten.length; i += schritt) {
+      if (!tafel.seiten[i].ausgeblendet) return i;
+    }
+    return null;
+  }
+
   function praesAnzeige() {
+    var offen = animation ? animation.anzahl - animation.stand() : 0;
     document.getElementById("p-nummer").textContent = seiteNr + 1 + " / " + tafel.seiten.length;
-    document.getElementById("p-titel").textContent = E.seitenTitel(seite(), seiteNr + 1);
-    document.getElementById("p-zurueck").disabled = seiteNr === 0;
-    document.getElementById("p-weiter").disabled = seiteNr >= tafel.seiten.length - 1;
+    document.getElementById("p-titel").textContent = E.seitenTitel(seite(), seiteNr + 1) + (offen ? " · noch " + offen + (offen === 1 ? " Animation" : " Animationen") : "");
+    document.getElementById("p-zurueck").disabled = sichtbareSeite(seiteNr, -1) === null && !(animation && animation.stand() > 0);
+    document.getElementById("p-weiter").disabled = sichtbareSeite(seiteNr, 1) === null && !offen;
+    referentAktualisieren();
+  }
+
+  function praesZu(nr, rueckwaerts) {
+    if (nr === null || nr === seiteNr) return;
+    zuSeite(nr);
+    if (rueckwaerts && animation) {
+      animation.alle();
+      praesAnzeige();
+    }
+    E.uebergang(tafelEl, seite().uebergang, rueckwaerts);
+  }
+
+  /** Weiter wie in PowerPoint: zuerst die Animationen der Seite, dann die naechste Seite */
+  function praesWeiter() {
+    if (animation && animation.weiter()) {
+      praesAnzeige();
+      return;
+    }
+    praesZu(sichtbareSeite(seiteNr, 1), false);
+  }
+
+  function praesZurueck() {
+    if (animation && animation.zurueck()) {
+      praesAnzeige();
+      return;
+    }
+    praesZu(sichtbareSeite(seiteNr, -1), true);
   }
 
   function praesentieren(an) {
@@ -834,17 +1266,230 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     waehlen(null);
     kontext.bearbeitbar = !an;
+    laserSetzen(false);
+    abdecken(null);
     if (an) {
       modusSetzen("bearbeiten");
       if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(function () {});
       }
+      // Ausgeblendete Startseite ueberspringen
+      if (seite().ausgeblendet) {
+        var erste = sichtbareSeite(seiteNr, 1);
+        if (erste === null) erste = sichtbareSeite(seiteNr, -1);
+        if (erste !== null) seiteNr = erste;
+      }
     } else {
       modusSetzen("bearbeiten");
       if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+      if (referent && !referent.closed) referent.close();
+      referent = null;
     }
     seiteZeigen();
     window.requestAnimationFrame(einpassen);
+  }
+
+  // ---------- Laserpointer und abgedunkelter Bildschirm ----------
+
+  var laserAn = false;
+
+  function laserSetzen(an) {
+    laserAn = an;
+    document.body.classList.toggle("mit-laser", an);
+    document.getElementById("laser").hidden = true;
+    var k = document.getElementById("p-laser");
+    k.classList.toggle("aktiv", an);
+    k.setAttribute("aria-pressed", String(an));
+    if (an && modus === "zeichnen") modusSetzen("bearbeiten");
+  }
+
+  function laserBewegen(ev) {
+    if (!laserAn) return;
+    var punkt = document.getElementById("laser");
+    punkt.hidden = !!ev.target.closest(".praes-leiste");
+    punkt.style.left = ev.clientX + "px";
+    punkt.style.top = ev.clientY + "px";
+  }
+
+  /** Schwarzer oder weisser Bildschirm (Taste B oder W wie in PowerPoint) */
+  function abdecken(farbe) {
+    var a = document.getElementById("abdeckung");
+    a.hidden = !farbe;
+    a.className = "abdeckung" + (farbe ? " abdeckung-" + farbe : "");
+  }
+
+  // ---------- Referentenansicht ----------
+
+  var referentStart = 0;
+  var referentTakt = null;
+  var vorschauKontext = {
+    bearbeitbar: false,
+    druck: true,
+    festhalten: function () {},
+    speichern: function () {},
+    mediumUrl: S.mediumUrl
+  };
+
+  /** Verkleinerte, ruhende Ansicht einer Seite */
+  function seitenVorschau(s, breite) {
+    var box = el("div", "ref-vorschau");
+    var f = breite / BREITE;
+    box.style.width = breite + "px";
+    box.style.height = Math.round(HOEHE * f) + "px";
+    var flaeche = el("div", "tafel");
+    E.hintergrundAnwenden(flaeche, s, S.mediumUrl);
+    flaeche.style.width = BREITE + "px";
+    flaeche.style.height = HOEHE + "px";
+    flaeche.style.transform = "scale(" + f + ")";
+    var schicht = el("div", "ebene-elemente");
+    s.elemente.forEach(function (e) {
+      var teile = E.rahmenBauen(e, vorschauKontext);
+      E.inhaltBauen(e, teile, vorschauKontext);
+      schicht.appendChild(teile.knoten);
+    });
+    flaeche.appendChild(schicht);
+    if (s.striche.length) {
+      var lw = el("canvas", "ebene-zeichnung");
+      lw.width = BREITE / 2;
+      lw.height = HOEHE / 2;
+      flaeche.appendChild(lw);
+      E.stricheZeichnen(lw, s.striche);
+    }
+    box.appendChild(flaeche);
+    return box;
+  }
+
+  function referentOeffnen() {
+    if (referent && !referent.closed) {
+      referent.focus();
+      return;
+    }
+    var w = window.open("", "wandtafel-referent", "width=1180,height=720");
+    if (!w) {
+      W.melden("Das Fenster wurde blockiert. Bitte Pop-ups für diese Seite erlauben.", 7000);
+      return;
+    }
+    referent = w;
+    referentStart = Date.now();
+    var d = w.document;
+    // Mit Doctype, sonst rechnet das leere Fenster im Quirks-Modus
+    d.open();
+    d.write('<!doctype html><html lang="de-CH"><head><meta charset="utf-8"></head><body></body></html>');
+    d.close();
+    d.title = "Referentenansicht · " + tafel.titel;
+    d.documentElement.lang = "de-CH";
+    // Styles der Tafel uebernehmen (ohne neue Anfragen, Adressen in url() absolut)
+    var css = "";
+    Array.prototype.forEach.call(document.styleSheets, function (blatt) {
+      try {
+        Array.prototype.forEach.call(blatt.cssRules, function (regel) {
+          css +=
+            regel.cssText.replace(/url\((["']?)([^"')]+)\1\)/g, function (ganz, zeichen, adresse) {
+              return /^(data:|blob:|https?:|#)/.test(adresse) ? ganz : 'url("' + new URL(adresse, blatt.href || window.location.href).href + '")';
+            }) + "\n";
+        });
+      } catch (f) {
+        /* Stylesheet nicht lesbar */
+      }
+    });
+    var stil = d.createElement("style");
+    stil.textContent = css;
+    d.head.appendChild(stil);
+    d.body.className = "referent-seite";
+    d.body.textContent = "";
+    var kopf = el("header", "ref-kopf");
+    kopf.appendChild(el("strong", null, tafel.titel));
+    var zeit = el("span", "ref-zeit");
+    zeit.id = "ref-zeit";
+    var neuStart = el("button", "knopf", "Zeit neu starten");
+    neuStart.type = "button";
+    neuStart.addEventListener("click", function () {
+      referentStart = Date.now();
+      referentUhr();
+    });
+    var uhr = el("span", "ref-uhr");
+    uhr.id = "ref-uhr";
+    [zeit, neuStart, uhr].forEach(function (x) {
+      kopf.appendChild(x);
+    });
+    var haupt = el("main", "ref-haupt");
+    var links = el("section", "ref-links");
+    links.id = "ref-links";
+    var rechts = el("section", "ref-rechts");
+    rechts.id = "ref-rechts";
+    haupt.appendChild(links);
+    haupt.appendChild(rechts);
+    var fuss = el("nav", "ref-fuss");
+    var zurueck = el("button", "knopf", "‹ Zurück");
+    zurueck.type = "button";
+    zurueck.addEventListener("click", praesZurueck);
+    var weiter = el("button", "knopf knopf-haupt", "Weiter ›");
+    weiter.type = "button";
+    weiter.addEventListener("click", praesWeiter);
+    var ende = el("button", "knopf", "Präsentation beenden");
+    ende.type = "button";
+    ende.addEventListener("click", function () {
+      praesentieren(false);
+    });
+    [zurueck, weiter, ende].forEach(function (x) {
+      fuss.appendChild(x);
+    });
+    [kopf, haupt, fuss].forEach(function (x) {
+      d.body.appendChild(x);
+    });
+    d.addEventListener("keydown", function (ev) {
+      if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") praesWeiter();
+      else if (ev.key === "ArrowLeft" || ev.key === "PageUp") praesZurueck();
+      else return;
+      ev.preventDefault();
+    });
+    clearInterval(referentTakt);
+    referentTakt = setInterval(function () {
+      if (!referent || referent.closed) {
+        clearInterval(referentTakt);
+        return;
+      }
+      referentUhr();
+    }, 1000);
+    referentAktualisieren();
+  }
+
+  function referentUhr() {
+    if (!referent || referent.closed) return;
+    var d = referent.document;
+    var sek = Math.floor((Date.now() - referentStart) / 1000);
+    var jetzt = new Date();
+    d.getElementById("ref-zeit").textContent = "Läuft seit " + (sek >= 3600 ? Math.floor(sek / 3600) + ":" : "") + W.zweistellig(Math.floor(sek / 60) % 60) + ":" + W.zweistellig(sek % 60);
+    d.getElementById("ref-uhr").textContent = W.zweistellig(jetzt.getHours()) + ":" + W.zweistellig(jetzt.getMinutes());
+  }
+
+  function referentAktualisieren() {
+    if (!referent || referent.closed || !praesentiert) return;
+    var d = referent.document;
+    var links = d.getElementById("ref-links");
+    var rechts = d.getElementById("ref-rechts");
+    if (!links) return;
+    links.textContent = "";
+    rechts.textContent = "";
+    var info = "Seite " + (seiteNr + 1) + " von " + tafel.seiten.length;
+    if (animation && animation.anzahl) info += " · Animation " + animation.stand() + " von " + animation.anzahl;
+    links.appendChild(el("h2", null, info + ": " + E.seitenTitel(seite(), seiteNr + 1)));
+    links.appendChild(seitenVorschau(seite(), 640));
+    var naechste = sichtbareSeite(seiteNr, 1);
+    rechts.appendChild(el("h2", null, naechste === null ? "Ende der Präsentation" : "Als Nächstes: Seite " + (naechste + 1)));
+    if (naechste !== null) rechts.appendChild(seitenVorschau(tafel.seiten[naechste], 360));
+    rechts.appendChild(el("h2", null, "Notizen"));
+    var notizen = el("div", "ref-notizen", seite().notizen || "Keine Notizen zu dieser Seite.");
+    notizen.classList.toggle("leer", !seite().notizen);
+    rechts.appendChild(notizen);
+    referentUhr();
+  }
+
+  // ---------- Notizen zur Seite ----------
+
+  function notizenZeigen() {
+    var feld = document.getElementById("notizen");
+    if (document.activeElement !== feld) feld.value = seite().notizen || "";
   }
 
   // ---------- Einfuegen ----------
@@ -1041,6 +1686,29 @@
       });
       return;
     }
+    if (typ === "tabelle") {
+      W.dialog({
+        titel: "Tabelle einfügen",
+        felder: [
+          { name: "spalten", label: "Spalten", typ: "zahl", wert: 3 },
+          { name: "zeilen", label: "Zeilen (mit Kopfzeile)", typ: "zahl", wert: 4 }
+        ],
+        knopf: "Einfügen"
+      }).then(function (w) {
+        if (!w) return;
+        var spalten = begrenzen(parseInt(w.spalten, 10) || 3, 1, 12);
+        var zeilen = begrenzen(parseInt(w.zeilen, 10) || 4, 1, 20);
+        var zellen = [];
+        for (var z = 0; z < zeilen; z++) {
+          zellen.push([]);
+          for (var sp = 0; sp < spalten; sp++) zellen[z].push("");
+        }
+        var k = hinzufuegen("tabelle", { zellen: zellen, kopf: true }, { b: begrenzen(spalten * 220, 300, 1500), h: Math.min(HOEHE, E.GRIFF + 16 + zeilen * 56) });
+        var erste = k.querySelector("th, td");
+        if (erste) erste.focus();
+      });
+      return;
+    }
     if (typ === "webseite" || typ === "link") {
       var webseite = typ === "webseite";
       W.dialog({
@@ -1091,6 +1759,17 @@
           jetztSpeichern()
             .then(function () {
               return X.pdfDrucken(tafel);
+            })
+            .catch(fehlerMelden);
+        }
+      },
+      {
+        text: "PowerPoint (.pptx)",
+        aktion: function () {
+          W.melden("PowerPoint-Datei wird erstellt …");
+          jetztSpeichern()
+            .then(function () {
+              return W.Pptx.speichern(tafel);
             })
             .catch(fehlerMelden);
         }
@@ -1165,6 +1844,29 @@
       k.addEventListener("click", function () {
         neuesElement(k.dataset.neu);
       });
+    });
+    var formenKnopf = document.getElementById("formen-knopf");
+    formenKnopf.addEventListener("click", function () {
+      formenMenue(formenKnopf);
+    });
+    var layoutKnopf = document.getElementById("seite-layout");
+    layoutKnopf.addEventListener("click", function () {
+      layoutMenue(layoutKnopf);
+    });
+    var notizenFeld = document.getElementById("notizen");
+    notizenFeld.addEventListener("input", function () {
+      if (notizenFeld.value) seite().notizen = notizenFeld.value;
+      else delete seite().notizen;
+      speichern();
+    });
+    notizenFeld.addEventListener("change", festhalten);
+    document.getElementById("notizen-knopf").addEventListener("click", function () {
+      var bereich = document.getElementById("notizen-bereich");
+      bereich.hidden = !bereich.hidden;
+      this.classList.toggle("aktiv", !bereich.hidden);
+      this.setAttribute("aria-pressed", String(!bereich.hidden));
+      einpassen();
+      if (!bereich.hidden) notizenFeld.focus();
     });
     var moduleKnopf = document.getElementById("module-knopf");
     moduleKnopf.addEventListener("click", function () {
@@ -1259,12 +1961,16 @@
     });
 
     // Praesentationsleiste
-    document.getElementById("p-zurueck").addEventListener("click", function () {
-      zuSeite(seiteNr - 1);
+    document.getElementById("p-zurueck").addEventListener("click", praesZurueck);
+    document.getElementById("p-weiter").addEventListener("click", praesWeiter);
+    document.getElementById("p-laser").addEventListener("click", function () {
+      laserSetzen(!laserAn);
     });
-    document.getElementById("p-weiter").addEventListener("click", function () {
-      zuSeite(seiteNr + 1);
+    document.getElementById("p-referent").addEventListener("click", referentOeffnen);
+    document.getElementById("abdeckung").addEventListener("click", function () {
+      abdecken(null);
     });
+    document.addEventListener("pointermove", laserBewegen);
     document.getElementById("p-zeichnen").addEventListener("click", function () {
       if (modus === "zeichnen" && werkzeug !== "radierer") modusSetzen("bearbeiten");
       else {
@@ -1306,6 +2012,10 @@
     });
   }
 
+  var sprungNr = "";
+  var sprungTakt = null;
+  var schiebenTakt = null;
+
   function tastenEinrichten() {
     document.addEventListener("keydown", function (ev) {
       if (document.querySelector("dialog[open]")) return;
@@ -1321,21 +2031,67 @@
         zurueckholen(1);
         return;
       }
+      if (strg && !bearbeitetGerade() && taste === "d" && gewaehlt && !praesentiert) {
+        ev.preventDefault();
+        duplizieren(finden(gewaehlt));
+        return;
+      }
       if (bearbeitetGerade()) {
         if (ev.key === "Escape") document.activeElement.blur();
         return;
       }
       if (strg || ev.altKey) return;
       if (praesentiert) {
-        if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") zuSeite(seiteNr + 1);
-        else if (ev.key === "ArrowLeft" || ev.key === "PageUp") zuSeite(seiteNr - 1);
-        else if (ev.key === "Home") zuSeite(0);
-        else if (ev.key === "End") zuSeite(tafel.seiten.length - 1);
+        // Schwarzer/weisser Bildschirm: jede Taste zeigt die Seite wieder
+        if (!document.getElementById("abdeckung").hidden) {
+          abdecken(null);
+          ev.preventDefault();
+          return;
+        }
+        // Leertaste und Enter auf einem Knopf loesen nur den Knopf aus
+        if ((ev.key === " " || ev.key === "Enter") && ev.target.closest && ev.target.closest("button")) return;
+        // Seitennummer tippen und Enter: direkt zu dieser Seite (wie in PowerPoint)
+        if (/^[0-9]$/.test(ev.key)) {
+          sprungNr += ev.key;
+          clearTimeout(sprungTakt);
+          sprungTakt = setTimeout(function () {
+            sprungNr = "";
+          }, 2500);
+          ev.preventDefault();
+          return;
+        }
+        if (ev.key === "Enter" && sprungNr) {
+          var ziel = parseInt(sprungNr, 10) - 1;
+          sprungNr = "";
+          if (ziel >= 0 && ziel < tafel.seiten.length) praesZu(ziel, ziel < seiteNr);
+        } else if (ev.key === "ArrowRight" || ev.key === "ArrowDown" || ev.key === "PageDown" || ev.key === " " || ev.key === "Enter") praesWeiter();
+        else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp" || ev.key === "PageUp" || ev.key === "Backspace") praesZurueck();
+        else if (ev.key === "Home") praesZu(sichtbareSeite(-1, 1), true);
+        else if (ev.key === "End") praesZu(sichtbareSeite(tafel.seiten.length, -1), false);
         else if (taste === "z") document.getElementById("p-zeichnen").click();
+        else if (taste === "l") laserSetzen(!laserAn);
+        else if (taste === "b" || ev.key === ".") abdecken("schwarz");
+        else if (taste === "w" || ev.key === ",") abdecken("weiss");
+        else if (taste === "r") referentOeffnen();
         else if (ev.key === "Escape") praesentieren(false);
         else return;
         ev.preventDefault();
         return;
+      }
+      // Gewaehltes Element mit den Pfeiltasten verschieben (Shift: grosse Schritte)
+      var richtung = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+      if (richtung && gewaehlt && modus === "bearbeiten") {
+        var e = finden(gewaehlt);
+        if (e) {
+          ev.preventDefault();
+          var schritt = ev.shiftKey ? 20 : 2;
+          e.x = Math.round(begrenzen(e.x + richtung[0] * schritt, -e.b + 60, BREITE - 60));
+          e.y = Math.round(begrenzen(e.y + richtung[1] * schritt, 0, HOEHE - 40));
+          E.lage(knotenVon(e.id), e);
+          clearTimeout(schiebenTakt);
+          schiebenTakt = setTimeout(festhalten, 500);
+          return;
+        }
       }
       if ((ev.key === "Delete" || ev.key === "Backspace") && gewaehlt) {
         ev.preventDefault();
@@ -1360,11 +2116,36 @@
       einpassen();
     });
 
-    // Einfuegen aus der Zwischenablage: Bild, Adresse oder Text
+    // Gewaehltes Element kopieren oder ausschneiden (Ctrl+C, Ctrl+X), auch auf andere Seiten und Tafeln
+    function kopieren(ev, ausschneiden) {
+      if (bearbeitetGerade() || praesentiert || !gewaehlt || document.querySelector("dialog[open]")) return;
+      if (String(window.getSelection() || "")) return;
+      var e = finden(gewaehlt);
+      if (!e || !ev.clipboardData) return;
+      ev.preventDefault();
+      ev.clipboardData.setData(KOPIE_TYP, JSON.stringify(e));
+      ev.clipboardData.setData("text/plain", e.daten.text || e.daten.url || E.NAMEN[e.typ]);
+      if (ausschneiden) entfernen(e.id);
+      else W.melden("Element kopiert. Mit Ctrl+V einfügen, auch auf einer anderen Seite.");
+    }
+    document.addEventListener("copy", function (ev) {
+      kopieren(ev, false);
+    });
+    document.addEventListener("cut", function (ev) {
+      kopieren(ev, true);
+    });
+
+    // Einfuegen aus der Zwischenablage: Element, Bild, Adresse oder Text
     document.addEventListener("paste", function (ev) {
       if (bearbeitetGerade() || praesentiert || document.querySelector("dialog[open]")) return;
       var daten = ev.clipboardData;
       if (!daten) return;
+      var kopie = daten.getData(KOPIE_TYP);
+      if (kopie) {
+        ev.preventDefault();
+        elementEinfuegen(kopie);
+        return;
+      }
       for (var i = 0; i < daten.items.length; i++) {
         if (/^image\//.test(daten.items[i].type)) {
           ev.preventDefault();
@@ -1496,6 +2277,15 @@
       return jetztSpeichern();
     },
     adresseEinfuegen: adresseEinfuegen,
+    elementEinfuegen: elementEinfuegen,
+    weiter: praesWeiter,
+    zurueck: praesZurueck,
+    animation: function () {
+      return animation ? { anzahl: animation.anzahl, stand: animation.stand() } : null;
+    },
+    referent: function () {
+      return referent;
+    },
     bildEinfuegen: bildEinfuegen,
     videoEinfuegen: videoEinfuegen,
     dateiEinfuegen: dateiEinfuegen

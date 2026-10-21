@@ -264,6 +264,32 @@ body.oberflaeche {
   font-weight: 700;
   font-size: 15px;
 }
+.dialog-feld.dialog-haken {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
+}
+.dialog-haken input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.dialog-feld input[type="color"] {
+  width: 80px;
+  height: 40px;
+  padding: 2px;
+}
+.dialog-feld input[type="number"] {
+  width: 120px;
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid #b9c3ca;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 400;
+}
 .dialog-feld small {
   font-weight: 400;
   color: var(--text-leise);

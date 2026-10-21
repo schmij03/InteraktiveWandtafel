@@ -12,7 +12,11 @@ interaktiven Wandtafel von fobizz und aufgebaut wie die Tafel in
 - **Spotlight**: eine Karte gross über der Seite zeigen, auch beim Präsentieren
 - **Design** pro Seite: Vorlagen oder eigene Farbe, Muster und Hintergrundbild
 - **Präsentieren** im Vollbild mit Pfeiltasten, auch während der Präsentation zeichnen
-- **Export** als HTML-Datei (offline präsentieren), PDF und Wandtafel-Datei; **Import** auf jedem Gerät
+- **Wie in PowerPoint:** Formen, Tabellen, Textformat (Schriftart, kursiv, unterstrichen, Aufzählungen),
+  Folienlayouts, **Animationen**, **Folienübergänge**, ausgeblendete Seiten, **Notizen** mit
+  **Referentenansicht**, Hilfslinien, Laserpointer, schwarzer/weisser Bildschirm
+- **Export** als HTML-Datei (offline präsentieren), PDF, **PowerPoint (.pptx)** und Wandtafel-Datei;
+  **Import** auf jedem Gerät
 
 Wie die fobizz-Tafel untersucht und nachgebaut wurde (REA-Vorgehen mit Quellen, Abgleich und Grenzen):
 [docs/rea-analyse.md](docs/rea-analyse.md).
@@ -65,6 +69,23 @@ Run workflow* starten. Die Seite ist dann unter `https://schmij03.github.io/Inte
 | Rückgängig | Ctrl+Z, wiederholen mit Ctrl+Y |
 | Präsentieren (P) | Vollbild ohne Werkzeuge, Pfeiltasten oder Leertaste blättern, Z zeichnen, Esc beendet |
 
+### Wie in PowerPoint
+
+| Funktion | Wie |
+|---|---|
+| Formen | «Form»: Rechteck, abgerundetes Rechteck, Ellipse, Dreieck, Raute, Sechseck, Pfeil, Stern, Sprechblase; Doppelklick schreibt Text in die Form |
+| Tabelle | «Tabelle»: Spalten und Zeilen wählen, Zellen direkt beschreiben (Tab springt weiter); Knöpfe in der Kopfleiste fügen Zeilen und Spalten hinzu oder entfernen sie; Kopfzeile im Menü «…» |
+| Format | Knopf «A» in der Kopfleiste von Text, Notiz, Form und Tabelle: Schriftart, Grösse, Farbe, fett, kursiv, unterstrichen, Ausrichtung (auch Blocksatz), Aufzählungszeichen oder Nummerierung; bei Formen Füllung, Rand und Lage des Texts |
+| Folienlayouts | Knopf neben «+ Seite»: Titelfolie, Titel und Inhalt, Zwei Inhalte, Vergleich, Nur Titel, Abschnittsüberschrift; leere Platzhalter sind beim Präsentieren unsichtbar |
+| Animationen | Menü «…» > «Animation hinzufügen»: Verblassen, Hineinfliegen, Zoomen, Wischen mit Reihenfolge (gleiche Zahl erscheint zusammen); beim Präsentieren erscheinen die Elemente mit jedem «Weiter», die violette Zahl zeigt die Reihenfolge |
+| Übergänge | Menü «…» einer Seite > «Übergang»: Verblassen, Schieben, Wischen, Kreis, für eine oder alle Seiten |
+| Seiten ordnen und ausblenden | Seiten in der Liste mit der Maus verschieben; Menü «…» > «Beim Präsentieren ausblenden» |
+| Notizen | «Notizen» oben öffnet den Notizbereich unter der Seite |
+| Referentenansicht | beim Präsentieren Knopf mit Bildschirm oder Taste R: eigenes Fenster mit aktueller und nächster Seite, Notizen, Animationsstand, Zeit und Uhr (für den zweiten Bildschirm) |
+| Beim Präsentieren | L Laserpointer, B schwarzer und W weisser Bildschirm (jede Taste zurück), Seitennummer tippen und Enter springt dorthin, Pos1 und Ende |
+| Anordnen | Hilfslinien beim Verschieben (Seitenrand, Seitenmitte, Kanten anderer Elemente; mit Alt frei), Pfeiltasten verschieben (Shift: grosse Schritte), Menü «…» > «Auf der Seite ausrichten», «In den Vordergrund» |
+| Kopieren | Ctrl+C, Ctrl+X, Ctrl+V für Elemente, auch auf andere Seiten und Tafeln; Ctrl+D dupliziert |
+
 Webseiten: Manche Seiten verbieten das Einbetten (zum Beispiel viele Login-Seiten). Dann bleibt die Fläche leer;
 «Neuer Tab» in der Leiste unten öffnet die Seite trotzdem, oder man fügt sie als Link ein.
 Google Docs, Slides und Sheets werden automatisch in der Vorschau-Ansicht eingebettet.
@@ -78,6 +99,7 @@ Hochgeladene Videodateien bleiben im Browser; sehr grosse Videos füllen den Spe
 |---|---|---|
 | HTML-Datei (offline) | Tafel > Exportieren, oder Menü «…» der Tafel | eine Datei mit allem (Schrift, Bilder, Videos); per Doppelklick präsentieren, ohne Internet und ohne diese Website (Webseiten und YouTube brauchen Internet) |
 | PDF | Tafel > Exportieren > PDF | öffnet den Druckdialog, dort «Als PDF speichern»; eine PDF-Seite pro Tafelseite, Webseiten und Videos als Platzhalter mit Adresse |
+| PowerPoint (`.pptx`) | Tafel > Exportieren > PowerPoint | eine Folie pro Seite (16:9) mit bearbeitbaren Texten, Formen und Tabellen, Bildern, Zeichnungen, Hintergrund, Notizen, Übergängen und ausgeblendeten Folien; Videos, Webseiten, Links und Dateien als Karte mit anklickbarer Adresse. Animationen und Module (Timer, Lostopf, …) sind nicht enthalten |
 | Wandtafel-Datei (`.wandtafel.json`) | Tafel, Kapitel oder Fach | zum Weitergeben an Kolleginnen und Kollegen oder auf ein anderes Gerät |
 | Sicherung | «Alles sichern» oben | alle Fächer, Kapitel, Tafeln und Medien in einer Datei |
 | Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | Wandtafel-Dateien und exportierte HTML-Dateien; Fächer und Kapitel mit gleichem Namen werden ergänzt |
@@ -108,6 +130,7 @@ die App nicht zuverlässig, weil Browser dort den Speicher einschränken; export
 | QR-Codes (qrcode-generator von Kazuhiko Arase, MIT-Lizenz) | `site/js/qrcode.js` |
 | Speicher im Browser (IndexedDB) | `site/js/speicher.js` |
 | Export und Import | `site/js/export.js`, Offline-Ansicht `site/js/ansicht.js` |
+| PowerPoint-Export (eigenes ZIP und Office Open XML, ohne Bibliothek) | `site/js/pptx.js` |
 | Dialoge, Menüs, Icons | `site/js/gemeinsam.js`, `site/css/basis.css` |
 | Vorschau-Server, Browsertest | `tools/vorschau.mjs`, `tools/pruefen.mjs`, `tools/server.mjs` |
 
@@ -134,5 +157,11 @@ Farben wie in MI_Connected3 als Variablen oben in `site/css/basis.css`.
 
 Eine Sicherung (`"art": "sammlung"`) enthält statt `tafel` die Listen `faecher` (mit `kapitel` und deren
 Tafel-IDs) und `tafeln`. Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `datei`, `timer`,
-`stoppuhr`, `uhr`, `ampel`, `sozialform`, `zufall` (Lostopf), `gruppen`, `wuerfel`. Eine Seite mit eigenem Design hat
+`stoppuhr`, `uhr`, `ampel`, `sozialform`, `zufall` (Lostopf), `gruppen`, `wuerfel`, `form`, `tabelle`. Eine Seite mit eigenem Design hat
 `"hintergrund": "eigen"` und dazu `hgFarbe`, `hgMuster` (`kariert`, `liniert`, `punkte`) und `hgBild` (Medium-ID).
+
+Dazu kommen aus den PowerPoint-Funktionen: an der Seite `notizen`, `uebergang` (`blenden`, `schieben`, `wischen`,
+`kreis`) und `ausgeblendet`; an einem Element `anim` (`{ "effekt": "zoomen", "nr": 1 }`); in den Daten von Text,
+Notiz und Form `schrift`, `kursiv`, `unterstrichen`, `liste` (`punkte`, `nummern`) und `platzhalter`; eine Form hat
+`form`, `fuellung` (Farbe oder `keine`), `rand`, `randDicke` und `vertikal`; eine Tabelle `zellen` (Zeilen mit Texten)
+und `kopf`. Ältere Tafeln ohne diese Angaben funktionieren unverändert.

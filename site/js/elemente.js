@@ -44,7 +44,9 @@
     uhr: [360, 420],
     ampel: [220, 500],
     sozialform: [460, 380],
-    datei: [440, 340]
+    datei: [440, 340],
+    form: [360, 240],
+    tabelle: [720, 284]
   };
 
   var NAMEN = {
@@ -62,7 +64,9 @@
     uhr: "Uhr",
     ampel: "Ampel",
     sozialform: "Sozialform",
-    datei: "Datei"
+    datei: "Datei",
+    form: "Form",
+    tabelle: "Tabelle"
   };
 
   var SOZIALFORMEN = [
@@ -71,6 +75,174 @@
     { wert: "gruppe", text: "Gruppenarbeit", icon: '<circle cx="12" cy="6" r="2.6"/><circle cx="5.5" cy="10" r="2.4"/><circle cx="18.5" cy="10" r="2.4"/><path d="M7 21c0-3 2.2-5.5 5-5.5s5 2.5 5 5.5M1 20c0-2.6 1.8-4.6 4.5-4.6M23 20c0-2.6-1.8-4.6-4.5-4.6"/>' },
     { wert: "plenum", text: "Plenum", icon: '<path d="M4 5h16v9H9l-5 4z"/><path d="M8 9h8"/>' }
   ];
+
+  // ---------- Wie in PowerPoint: Formen, Schriften, Animationen, Uebergaenge ----------
+
+  function sternPunkte() {
+    var p = [];
+    for (var i = 0; i < 10; i++) {
+      var r = i % 2 ? 19 : 50;
+      var w = ((-90 + i * 36) * Math.PI) / 180;
+      p.push(Math.round((50 + r * Math.cos(w)) * 10) / 10 + "," + Math.round((53 + r * Math.sin(w)) * 10) / 10);
+    }
+    return p.join(" ");
+  }
+
+  // Formen in einem Feld von 100 x 100, auf die Groesse des Elements gestreckt.
+  // innen: Textbereich [oben, rechts, unten, links] in Prozent; pptx: Vorlage in PowerPoint
+  var FORMEN = [
+    { wert: "rechteck", text: "Rechteck", pptx: "rect", innen: [4, 4, 4, 4], svg: '<rect width="100" height="100"/>' },
+    { wert: "abgerundet", text: "Abgerundetes Rechteck", pptx: "roundRect", innen: [6, 6, 6, 6], svg: '<rect width="100" height="100" rx="12" ry="12"/>' },
+    { wert: "ellipse", text: "Ellipse / Kreis", pptx: "ellipse", innen: [15, 15, 15, 15], svg: '<ellipse cx="50" cy="50" rx="50" ry="50"/>' },
+    { wert: "dreieck", text: "Dreieck", pptx: "triangle", innen: [45, 22, 4, 22], svg: '<polygon points="50,0 100,100 0,100"/>' },
+    { wert: "raute", text: "Raute", pptx: "diamond", innen: [25, 25, 25, 25], svg: '<polygon points="50,0 100,50 50,100 0,50"/>' },
+    { wert: "sechseck", text: "Sechseck", pptx: "hexagon", innen: [6, 20, 6, 20], svg: '<polygon points="25,0 75,0 100,50 75,100 25,100 0,50"/>' },
+    { wert: "pfeil", text: "Pfeil", pptx: "rightArrow", innen: [28, 30, 28, 4], svg: '<polygon points="0,28 62,28 62,0 100,50 62,100 62,72 0,72"/>' },
+    { wert: "stern", text: "Stern", pptx: "star5", innen: [38, 30, 24, 30], svg: '<polygon points="' + sternPunkte() + '"/>' },
+    { wert: "sprechblase", text: "Sprechblase", pptx: "wedgeRectCallout", innen: [4, 4, 32, 4], svg: '<path d="M0 0H100V72H38L18 100L22 72H0Z"/>' }
+  ];
+  var FORM_STANDARD = { fuellung: "#d6ecfb", rand: "#065a82", randDicke: 3 };
+
+  function formVon(wert) {
+    for (var i = 0; i < FORMEN.length; i++) if (FORMEN[i].wert === wert) return FORMEN[i];
+    return FORMEN[0];
+  }
+
+  // Schriftarten; die Standardschrift ist Calibri bzw. Carlito (gleich breit)
+  var SCHRIFTEN = [
+    { wert: "", text: "Calibri (Standard)", css: "", pptx: "Calibri" },
+    { wert: "serif", text: "Georgia (mit Serifen)", css: 'Georgia, "Times New Roman", serif', pptx: "Georgia" },
+    { wert: "schreib", text: "Handschrift", css: '"Comic Sans MS", "Chalkboard SE", "Segoe Print", cursive', pptx: "Comic Sans MS" },
+    { wert: "mono", text: "Schreibmaschine", css: 'Menlo, Consolas, "Courier New", monospace', pptx: "Courier New" }
+  ];
+
+  function schriftVon(wert) {
+    for (var i = 0; i < SCHRIFTEN.length; i++) if (SCHRIFTEN[i].wert === (wert || "")) return SCHRIFTEN[i];
+    return SCHRIFTEN[0];
+  }
+
+  // Animationen: Elemente erscheinen beim Praesentieren nacheinander
+  var EFFEKTE = [
+    { wert: "einblenden", text: "Verblassen (einblenden)" },
+    { wert: "fliegen", text: "Hineinfliegen (von unten)" },
+    { wert: "zoomen", text: "Zoomen" },
+    { wert: "wischen", text: "Wischen (von links)" }
+  ];
+
+  // Folienuebergaenge beim Wechsel auf eine Seite
+  var UEBERGAENGE = [
+    { wert: "", text: "Ohne Übergang" },
+    { wert: "blenden", text: "Verblassen" },
+    { wert: "schieben", text: "Schieben" },
+    { wert: "wischen", text: "Wischen" },
+    { wert: "kreis", text: "Kreis" }
+  ];
+
+  function standardGroesse(typ) {
+    return typ === "notiz" || typ === "form" ? 28 : typ === "tabelle" ? 24 : 32;
+  }
+
+  /** Schrift, Grösse, Farbe, Stil, Ausrichtung und Liste auf ein Textfeld anwenden */
+  function textStil(feld, e) {
+    var d = e.daten;
+    feld.style.fontSize = (d.groesse || standardGroesse(e.typ)) + "px";
+    feld.style.fontWeight = d.fett ? "700" : "";
+    feld.style.fontStyle = d.kursiv ? "italic" : "";
+    feld.style.textDecoration = d.unterstrichen ? "underline" : "";
+    feld.style.textAlign = d.ausrichtung || (e.typ === "form" ? "center" : "");
+    feld.style.fontFamily = schriftVon(d.schrift).css;
+    if (d.farbe && e.typ !== "notiz") feld.style.color = d.farbe;
+    feld.classList.toggle("liste-punkte", d.liste === "punkte");
+    feld.classList.toggle("liste-nummern", d.liste === "nummern");
+  }
+
+  /** Text einsetzen; bei Listen jede Zeile als eigener Absatz */
+  function textSetzen(feld, text, liste) {
+    feld.textContent = "";
+    if (!text) return;
+    if (!liste) {
+      feld.textContent = text;
+      return;
+    }
+    String(text)
+      .split("\n")
+      .forEach(function (zeile) {
+        var absatz = el("div", null, zeile);
+        if (!zeile) absatz.appendChild(el("br"));
+        feld.appendChild(absatz);
+      });
+  }
+
+  /**
+   * Animationen einer Seite beim Praesentieren. Elemente mit Animation sind zuerst
+   * versteckt; weiter() zeigt die naechste Stufe (gleiche Nummer = gleichzeitig).
+   */
+  function animationen(ebene, seite) {
+    var stufen = [];
+    seite.elemente.forEach(function (e) {
+      if (e.anim && e.anim.effekt && stufen.indexOf(e.anim.nr || 1) === -1) stufen.push(e.anim.nr || 1);
+    });
+    stufen.sort(function (a, b) {
+      return a - b;
+    });
+    var pos = 0;
+    function jede(nr, arbeit) {
+      seite.elemente.forEach(function (e) {
+        if (!e.anim || !e.anim.effekt || (e.anim.nr || 1) !== nr) return;
+        var k = ebene.querySelector('[data-id="' + e.id + '"]');
+        if (k) arbeit(k, e.anim.effekt);
+      });
+    }
+    function verstecken(nr) {
+      jede(nr, function (k, effekt) {
+        k.classList.remove("anim-" + effekt);
+        k.classList.add("anim-wartet");
+      });
+    }
+    function zeigen(nr, mitEffekt) {
+      jede(nr, function (k, effekt) {
+        k.classList.remove("anim-wartet");
+        if (mitEffekt) k.classList.add("anim-" + effekt);
+      });
+    }
+    stufen.forEach(verstecken);
+    return {
+      anzahl: stufen.length,
+      stand: function () {
+        return pos;
+      },
+      weiter: function () {
+        if (pos >= stufen.length) return false;
+        zeigen(stufen[pos++], true);
+        return true;
+      },
+      zurueck: function () {
+        if (pos <= 0) return false;
+        verstecken(stufen[--pos]);
+        return true;
+      },
+      alle: function () {
+        while (pos < stufen.length) zeigen(stufen[pos++], false);
+      }
+    };
+  }
+
+  /** Spielt den Uebergang einer Seite auf der Flaeche ab */
+  function uebergang(flaeche, art, rueckwaerts) {
+    UEBERGAENGE.forEach(function (u) {
+      if (u.wert) flaeche.classList.remove("ueb-" + u.wert);
+    });
+    flaeche.classList.remove("rueckwaerts");
+    if (!art) return;
+    void flaeche.offsetWidth;
+    flaeche.classList.add("ueb-" + art);
+    flaeche.classList.toggle("rueckwaerts", !!rueckwaerts);
+    flaeche.addEventListener("animationend", function ende(ev) {
+      if (ev.target !== flaeche) return;
+      flaeche.classList.remove("ueb-" + art, "rueckwaerts");
+      flaeche.removeEventListener("animationend", ende);
+    });
+  }
 
   // ---------- Adressen erkennen ----------
 
@@ -280,6 +452,11 @@
     knoten.appendChild(griff);
     var koerper = el("div", "koerper");
     knoten.appendChild(koerper);
+    if (kontext.bearbeitbar && e.anim && e.anim.effekt) {
+      var marke = el("span", "anim-marke", String(e.anim.nr || 1));
+      marke.title = "Animation " + (e.anim.nr || 1) + ": erscheint beim Präsentieren nacheinander";
+      knoten.appendChild(marke);
+    }
     if (!kontext.druck) {
       // Spotlight: Element gross ueber der ganzen Seite zeigen (auch beim Praesentieren)
       var spot = knopf("spot-knopf", "vollbild", "Im Spotlight zeigen (Esc schliesst)");
@@ -340,6 +517,8 @@
     knoten.style.width = e.b + "px";
     knoten.style.height = e.h + "px";
     knoten.style.zIndex = e.z;
+    // Formen haben die Griffleiste oberhalb; ganz oben auf der Seite innen
+    if (e.typ === "form") knoten.classList.toggle("griff-innen", e.y < GRIFF);
   }
 
   /** Fuellt den Inhalt eines Elements */
@@ -353,11 +532,8 @@
   function textFeld(e, koerper, platzhalterText, kontext) {
     var feld = el("div", "textfeld");
     feld.dataset.platzhalter = kontext.bearbeitbar ? platzhalterText : "";
-    feld.textContent = e.daten.text || "";
-    feld.style.fontSize = (e.daten.groesse || 32) + "px";
-    feld.style.fontWeight = e.daten.fett ? "700" : "";
-    feld.style.textAlign = e.daten.ausrichtung || "";
-    if (e.daten.farbe && e.typ === "text") feld.style.color = e.daten.farbe;
+    textSetzen(feld, e.daten.text || "", e.daten.liste);
+    textStil(feld, e);
     if (kontext.bearbeitbar) {
       feld.contentEditable = "true";
       feld.spellcheck = false;
@@ -368,6 +544,8 @@
         document.execCommand("insertText", false, text);
       });
       feld.addEventListener("input", function () {
+        // Listen: auch die erste Zeile als Absatz, damit sie ein Aufzaehlungszeichen bekommt
+        if (e.daten.liste && feld.firstChild && feld.firstChild.nodeType === 3) document.execCommand("formatBlock", false, "div");
         e.daten.text = feld.innerText.replace(/\n$/, "");
         kontext.speichern();
       });
@@ -380,7 +558,7 @@
   function schriftWerkzeuge(e, werkzeuge, feld, kontext, mitFarbe) {
     if (!werkzeuge) return;
     function aendern(schritt) {
-      e.daten.groesse = begrenzen((e.daten.groesse || 32) + schritt, 14, 200);
+      e.daten.groesse = begrenzen((e.daten.groesse || standardGroesse(e.typ)) + schritt, 14, 200);
       feld.style.fontSize = e.daten.groesse + "px";
       kontext.festhalten();
     }
@@ -438,7 +616,7 @@
 
   var INHALT = {
     text: function (e, koerper, werkzeuge, knoten, kontext) {
-      var feld = textFeld(e, koerper, "Text eingeben …", kontext);
+      var feld = textFeld(e, koerper, e.daten.platzhalter || "Text eingeben …", kontext);
       schriftWerkzeuge(e, werkzeuge, feld, kontext, true);
     },
 
@@ -446,7 +624,6 @@
       if (!e.daten.farbe) e.daten.farbe = NOTIZFARBEN[0];
       knoten.style.setProperty("--notiz", e.daten.farbe);
       var feld = textFeld(e, koerper, "Notiz …", kontext);
-      if (!e.daten.groesse) feld.style.fontSize = "28px";
       schriftWerkzeuge(e, werkzeuge, feld, kontext, false);
       werkzeug(werkzeuge, "farbe", "Farbe wechseln", function () {
         var i = NOTIZFARBEN.indexOf(e.daten.farbe);
@@ -1106,6 +1283,132 @@
           vorschau.appendChild(el("span", "datei-gross", endung.toUpperCase() || "Datei"));
         }
       });
+    },
+
+    // Form wie in PowerPoint, auf Doppelklick mit Text
+    form: function (e, koerper, werkzeuge, knoten, kontext) {
+      var d = e.daten;
+      var f = formVon(d.form);
+      koerper.insertAdjacentHTML("beforeend", '<svg class="form-bild" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + f.svg + "</svg>");
+      var form = koerper.lastChild.firstChild;
+      form.style.fill = d.fuellung === "keine" ? "none" : d.fuellung || FORM_STANDARD.fuellung;
+      var dicke = d.randDicke != null ? d.randDicke : FORM_STANDARD.randDicke;
+      form.style.stroke = dicke > 0 ? d.rand || FORM_STANDARD.rand : "none";
+      form.style.strokeWidth = dicke + "px";
+      form.setAttribute("vector-effect", "non-scaling-stroke");
+      var bereich = el("div", "form-text form-" + (d.vertikal || "mitte"));
+      bereich.style.inset = f.innen.join("% ") + "%";
+      koerper.appendChild(bereich);
+      var feld = textFeld(e, bereich, "Text …", kontext);
+      if (!kontext.bearbeitbar) return;
+      // Erst auswaehlen und verschieben, Doppelklick schreibt
+      feld.addEventListener("focus", function () {
+        knoten.classList.add("schreibt");
+      });
+      feld.addEventListener("blur", function () {
+        knoten.classList.remove("schreibt");
+      });
+      koerper.addEventListener("dblclick", function () {
+        feld.focus();
+        var auswahl = window.getSelection();
+        auswahl.selectAllChildren(feld);
+        auswahl.collapseToEnd();
+      });
+    },
+
+    // Tabelle mit bearbeitbaren Zellen
+    tabelle: function (e, koerper, werkzeuge, knoten, kontext) {
+      var d = e.daten;
+      if (!d.zellen || !d.zellen.length) d.zellen = [["", "", ""], ["", "", ""], ["", "", ""]];
+      if (d.kopf == null) d.kopf = true;
+      var rahmen = el("div", "tabelle-rahmen");
+      var tab = el("table", "tabelle");
+      textStil(tab, e);
+      rahmen.appendChild(tab);
+      koerper.appendChild(rahmen);
+      var aktiv = null;
+
+      function bauen() {
+        tab.textContent = "";
+        tab.classList.toggle("mit-kopf", !!d.kopf);
+        d.zellen.forEach(function (zeile, z) {
+          var tr = el("tr");
+          zeile.forEach(function (wert, s) {
+            var zelle = el(z === 0 && d.kopf ? "th" : "td", null, wert);
+            if (kontext.bearbeitbar) {
+              zelle.contentEditable = "true";
+              zelle.spellcheck = false;
+              zelle.addEventListener("paste", function (ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                document.execCommand("insertText", false, (ev.clipboardData || window.clipboardData).getData("text/plain"));
+              });
+              zelle.addEventListener("focus", function () {
+                aktiv = { z: z, s: s };
+              });
+              zelle.addEventListener("input", function () {
+                d.zellen[z][s] = zelle.innerText.replace(/\n$/, "");
+                kontext.speichern();
+              });
+              zelle.addEventListener("blur", kontext.festhalten);
+            }
+            tr.appendChild(zelle);
+          });
+          tab.appendChild(tr);
+        });
+      }
+      bauen();
+      if (!werkzeuge) return;
+
+      function aendern(arbeit) {
+        arbeit();
+        bauen();
+        kontext.festhalten();
+      }
+      function zeileNr() {
+        return aktiv && aktiv.z < d.zellen.length ? aktiv.z : d.zellen.length - 1;
+      }
+      function spalteNr() {
+        return aktiv && aktiv.s < d.zellen[0].length ? aktiv.s : d.zellen[0].length - 1;
+      }
+      werkzeug(werkzeuge, "spalteWeg", "Spalte entfernen", function () {
+        if (d.zellen[0].length <= 1) return;
+        var s = spalteNr();
+        aendern(function () {
+          d.zellen.forEach(function (zeile) {
+            zeile.splice(s, 1);
+          });
+          aktiv = null;
+        });
+      });
+      werkzeug(werkzeuge, "zeileWeg", "Zeile entfernen", function () {
+        if (d.zellen.length <= 1) return;
+        var z = zeileNr();
+        aendern(function () {
+          d.zellen.splice(z, 1);
+          aktiv = null;
+        });
+      });
+      werkzeug(werkzeuge, "spalteNeu", "Spalte hinzufügen", function () {
+        var s = spalteNr() + 1;
+        aendern(function () {
+          d.zellen.forEach(function (zeile) {
+            zeile.splice(s, 0, "");
+          });
+        });
+      });
+      werkzeug(werkzeuge, "zeileNeu", "Zeile hinzufügen", function () {
+        var z = zeileNr() + 1;
+        aendern(function () {
+          d.zellen.splice(
+            z,
+            0,
+            d.zellen[0].map(function () {
+              return "";
+            })
+          );
+        });
+      });
     }
   };
 
@@ -1253,6 +1556,16 @@
     spotlightSchliessen: spotlightSchliessen,
     hintergrundAnwenden: hintergrundAnwenden,
     SOZIALFORMEN: SOZIALFORMEN,
+    FORMEN: FORMEN,
+    FORM_STANDARD: FORM_STANDARD,
+    formVon: formVon,
+    SCHRIFTEN: SCHRIFTEN,
+    schriftVon: schriftVon,
+    standardGroesse: standardGroesse,
+    EFFEKTE: EFFEKTE,
+    UEBERGAENGE: UEBERGAENGE,
+    animationen: animationen,
+    uebergang: uebergang,
     hintergruende: [
       { wert: "weiss", text: "Weiss" },
       { wert: "kariert", text: "Kariert" },

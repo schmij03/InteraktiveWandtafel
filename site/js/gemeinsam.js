@@ -55,7 +55,18 @@
     verschieben: '<rect x="3" y="5" width="11" height="14" rx="1.5"/><path d="M14 12h7M18 9l3 3-3 3"/>',
     pinsel: '<path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 20l2-2"/>',
     design: '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>',
-    neuladen: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'
+    neuladen: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+    form: '<rect x="3" y="11" width="10" height="10" rx="1"/><circle cx="16" cy="8" r="5"/>',
+    tabelle: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9.5h18M3 15h18M9 4v16M15 4v16"/>',
+    format: '<path d="M4 18L9 5l5 13M6 13h6"/><path d="M15 20h6M18 9v11"/>',
+    animation: '<path d="M4 18c3-9 7-12 16-13"/><path d="M15 3l5 2-2 5"/><circle cx="5" cy="19" r="1.5"/>',
+    laser: '<circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+    referent: '<rect x="2" y="4" width="13" height="10" rx="1"/><path d="M17 6h5M17 10h5M17 14h5M5 18h7M8.5 14v4"/>',
+    layout: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M12 9v11"/>',
+    zeileNeu: '<rect x="3" y="4" width="18" height="10" rx="1"/><path d="M3 9h18M12 16v6M9 19h6"/>',
+    spalteNeu: '<rect x="3" y="3" width="10" height="18" rx="1"/><path d="M8 3v18M16 12h6M19 9v6"/>',
+    zeileWeg: '<rect x="3" y="4" width="18" height="10" rx="1"/><path d="M3 9h18M9 19h6"/>',
+    spalteWeg: '<rect x="3" y="3" width="10" height="18" rx="1"/><path d="M8 3v18M16 12h6"/>'
   };
 
   function icon(name) {
@@ -189,7 +200,7 @@
 
   /**
    * Zeigt einen Dialog mit Eingabefeldern und liefert die Werte (oder null bei Abbrechen).
-   * felder: [{ name, label, typ: text|url|textarea|select|file|farbe|farbwert|zahl|hinweis, wert, optionen, accept, platzhalter }]
+   * felder: [{ name, label, typ: text|url|textarea|select|file|farbe|farbwert|zahl|haken|hinweis, wert, optionen, accept, platzhalter }]
    */
   function dialog(angaben) {
     return new Promise(function (ok) {
@@ -204,7 +215,7 @@
           form.appendChild(el("p", "dialog-hinweis", f.text));
           return;
         }
-        var zeile = el("label", "dialog-feld");
+        var zeile = el("label", "dialog-feld" + (f.typ === "haken" ? " dialog-haken" : ""));
         zeile.appendChild(el("span", null, f.label));
         var eingabe;
         if (f.typ === "textarea") {
@@ -237,7 +248,8 @@
         } else {
           eingabe = el("input");
           // Adressen ohne «https://» zulassen (wird beim Einfuegen ergaenzt)
-          eingabe.type = f.typ === "file" ? "file" : f.typ === "farbwert" ? "color" : f.typ === "zahl" ? "number" : "text";
+          eingabe.type = f.typ === "file" ? "file" : f.typ === "farbwert" ? "color" : f.typ === "zahl" ? "number" : f.typ === "haken" ? "checkbox" : "text";
+          if (f.typ === "haken") eingabe.checked = !!f.wert;
           if (f.typ === "url") {
             eingabe.inputMode = "url";
             eingabe.autocomplete = "url";
@@ -247,7 +259,7 @@
         }
         eingabe.name = f.name;
         if (f.platzhalter) eingabe.placeholder = f.platzhalter;
-        if (f.wert != null && f.typ !== "file" && f.typ !== "farbe") eingabe.value = f.wert;
+        if (f.wert != null && f.typ !== "file" && f.typ !== "farbe" && f.typ !== "haken") eingabe.value = f.wert;
         if (f.pflicht) eingabe.required = true;
         zeile.appendChild(eingabe);
         if (f.hilfe) zeile.appendChild(el("small", null, f.hilfe));
@@ -289,12 +301,13 @@
           var x = eingaben[name];
           if (x.feld.typ === "file") werte[name] = x.eingabe.files[0] || null;
           else if (x.feld.typ === "farbe") werte[name] = x.eingabe.wert();
+          else if (x.feld.typ === "haken") werte[name] = x.eingabe.checked;
           else werte[name] = x.eingabe.value.trim();
         });
         schliessen(werte);
       });
       d.showModal();
-      var erstes = form.querySelector("input:not([type=radio]), textarea, select");
+      var erstes = form.querySelector("input:not([type=radio]):not([type=checkbox]), textarea, select");
       if (erstes) {
         erstes.focus();
         if (erstes.select && erstes.type !== "file") erstes.select();

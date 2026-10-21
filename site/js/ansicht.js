@@ -82,7 +82,7 @@
 
   // ---------- Praesentieren ----------
 
-  var rahmen, buehne, anzeige, titelEl;
+  var rahmen, buehne, anzeige, titelEl, animation;
 
   function einpassen() {
     var flaeche = buehne.firstChild;
@@ -93,15 +93,40 @@
     flaeche.style.top = (rahmen.clientHeight - E.HOEHE * massstab) / 2 + "px";
   }
 
-  function zeigen(n) {
+  function zeigen(n, rueckwaerts) {
+    var vorher = nummer;
     nummer = W.begrenzen(n, 0, tafel.seiten.length - 1);
     E.alleStoppen();
     buehne.innerHTML = "";
-    buehne.appendChild(seiteBauen(tafel.seiten[nummer]));
+    var flaeche = seiteBauen(tafel.seiten[nummer]);
+    buehne.appendChild(flaeche);
+    animation = E.animationen(flaeche.querySelector(".ebene-elemente"), tafel.seiten[nummer]);
+    if (rueckwaerts) animation.alle();
     anzeige.textContent = nummer + 1 + " / " + tafel.seiten.length;
     titelEl.textContent = E.seitenTitel(tafel.seiten[nummer], nummer + 1);
     if (history.replaceState) history.replaceState(null, "", "#" + (nummer + 1));
     einpassen();
+    if (vorher !== nummer) E.uebergang(flaeche, tafel.seiten[nummer].uebergang, rueckwaerts);
+  }
+
+  /** Naechste sichtbare Seite (beim Praesentieren ausgeblendete ueberspringen) */
+  function sichtbar(von, schritt) {
+    for (var i = von + schritt; i >= 0 && i < tafel.seiten.length; i += schritt) {
+      if (!tafel.seiten[i].ausgeblendet) return i;
+    }
+    return null;
+  }
+
+  function weiter() {
+    if (animation && animation.weiter()) return;
+    var n = sichtbar(nummer, 1);
+    if (n !== null) zeigen(n, false);
+  }
+
+  function zurueck() {
+    if (animation && animation.zurueck()) return;
+    var n = sichtbar(nummer, -1);
+    if (n !== null) zeigen(n, true);
   }
 
   function vollbild() {
@@ -118,34 +143,31 @@
 
     var leiste = el("nav", "praes-leiste");
     leiste.setAttribute("aria-label", "Seiten");
-    var zurueck = W.knopf("p-knopf", "links", "Vorherige Seite (Pfeil links)");
-    var weiter = W.knopf("p-knopf", "rechts", "Nächste Seite (Pfeil rechts)");
+    var zurueckKnopf = W.knopf("p-knopf", "links", "Zurück (Pfeil links)");
+    var weiterKnopf = W.knopf("p-knopf", "rechts", "Weiter (Pfeil rechts)");
     anzeige = el("span", "praes-nummer");
     titelEl = el("span", "praes-titel");
     var voll = W.knopf("p-knopf", "vollbild", "Vollbild (F)");
     leiste.appendChild(el("strong", "praes-tafel", tafel.titel));
-    leiste.appendChild(zurueck);
+    leiste.appendChild(zurueckKnopf);
     leiste.appendChild(anzeige);
-    leiste.appendChild(weiter);
+    leiste.appendChild(weiterKnopf);
     leiste.appendChild(titelEl);
     leiste.appendChild(voll);
     document.body.appendChild(leiste);
 
-    zurueck.addEventListener("click", function () {
-      zeigen(nummer - 1);
-    });
-    weiter.addEventListener("click", function () {
-      zeigen(nummer + 1);
-    });
+    zurueckKnopf.addEventListener("click", zurueck);
+    weiterKnopf.addEventListener("click", weiter);
     voll.addEventListener("click", vollbild);
     document.addEventListener("keydown", function (ev) {
       var a = document.activeElement;
       if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") zeigen(nummer + 1);
-      else if (ev.key === "ArrowLeft" || ev.key === "PageUp") zeigen(nummer - 1);
+      if (ev.key === " " && ev.target.closest && ev.target.closest("button")) return;
+      if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") weiter();
+      else if (ev.key === "ArrowLeft" || ev.key === "PageUp") zurueck();
       else if (ev.key === "Home") zeigen(0);
-      else if (ev.key === "End") zeigen(tafel.seiten.length - 1);
+      else if (ev.key === "End") zeigen(tafel.seiten.length - 1, false);
       else if (ev.key === "f" || ev.key === "F") vollbild();
       else return;
       ev.preventDefault();
@@ -165,6 +187,8 @@
     },
     zeigen: function (n) {
       zeigen(n - 1);
-    }
+    },
+    weiter: weiter,
+    zurueck: zurueck
   };
 })();

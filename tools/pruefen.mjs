@@ -555,6 +555,245 @@ try {
   await fk.close();
   }
 
+  // ---------- Funktionen wie in PowerPoint ----------
+  {
+  console.log("Funktionen wie in PowerPoint");
+  const pk = await browser.newContext({ viewport: { width: 1400, height: 860 }, acceptDownloads: true });
+  await pk.route(/^https?:\/\/(?!localhost)/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>extern</p>" }));
+  const pp = await pk.newPage();
+  pp.on("pageerror", (e) => seitenFehler.push("powerpoint: " + e.message));
+  pp.on("dialog", (d) => d.accept());
+  const ed = (fn, arg) => pp.evaluate(fn, arg);
+  async function dlg(werte, knopf) {
+    const d = pp.locator("dialog[open]");
+    await d.waitFor();
+    for (const [name, wert] of Object.entries(werte)) {
+      const feld = d.locator(`[name="${name}"]`).first();
+      const typ = await feld.getAttribute("type");
+      if (typ === "checkbox") await feld.setChecked(!!wert);
+      else if ((await feld.evaluate((e) => e.tagName)) === "SELECT") await feld.selectOption(wert);
+      else await feld.fill(String(wert));
+    }
+    await d.locator(knopf ? `button:has-text("${knopf}")` : "button[type=submit]").click();
+    await d.waitFor({ state: "detached" });
+  }
+  async function menuePunkt(text) {
+    await pp.locator(".klappmenue button", { hasText: text }).first().click();
+  }
+  const aktuelle = () => ed(() => window.WandtafelEditor.tafel().seiten[window.WandtafelEditor.seite() - 1]);
+  const letztes = async (typ) => (await aktuelle()).elemente.filter((e) => e.typ === typ).pop();
+  async function elementMenue(knoten, text) {
+    await knoten.hover();
+    await knoten.locator('[title="Weitere Aktionen"]').click();
+    await menuePunkt(text);
+  }
+
+  await pp.goto(BASIS);
+  await pp.click("#beispiel");
+  await pp.waitForSelector(".tafel-karte");
+  await pp.locator(".tafel-karte a.knopf-haupt").first().click();
+  await pp.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+
+  // Folienlayout «Titel und Inhalt»
+  const anzahlVorher = await ed(() => window.WandtafelEditor.tafel().seiten.length);
+  await pp.click("#seite-layout");
+  await menuePunkt("Titel und Inhalt");
+  await pp.waitForFunction((n) => window.WandtafelEditor.tafel().seiten.length === n + 1, anzahlVorher);
+  const layoutSeite = await aktuelle();
+  pruefe(layoutSeite.elemente.length === 2 && layoutSeite.elemente[1].daten.liste === "punkte", "Neue Seite mit Layout «Titel und Inhalt»");
+  const ppNr = await ed(() => window.WandtafelEditor.seite());
+  await pp.locator(".element-text .textfeld").first().click();
+  await pp.keyboard.type("Wasserkreislauf");
+  await pp.locator(".element-text .textfeld").nth(1).click();
+  await pp.keyboard.type("Verdunstung");
+  await pp.keyboard.press("Enter");
+  await pp.keyboard.type("Niederschlag");
+  await pp.locator("#tafel").click({ position: { x: 5, y: 5 } });
+  const inhalt = (await aktuelle()).elemente[1].daten.text;
+  pruefe(inhalt === "Verdunstung\nNiederschlag" && (await pp.locator(".element-text .liste-punkte > div").count()) === 2, "Aufzählung mit zwei Punkten");
+
+  // Form mit Text und Format
+  await pp.click("#formen-knopf");
+  await menuePunkt("Stern");
+  await pp.waitForSelector(".element-form svg polygon");
+  const form = pp.locator(".element-form").last();
+  await form.locator(".koerper").dblclick();
+  await pp.keyboard.type("Super");
+  await pp.locator("#tafel").click({ position: { x: 5, y: 5 } });
+  pruefe((await letztes("form")).daten.text === "Super", "Form «Stern» mit Text");
+  await form.hover();
+  await form.locator('[title^="Format"]').click();
+  await dlg({ form: "pfeil", fuellung: "#ff0000", fett: true, kursiv: true, schrift: "serif" }, "Übernehmen");
+  const formDaten = (await letztes("form")).daten;
+  const fuell = await pp.locator(".element-form").last().locator(".form-bild > *").evaluate((e) => e.style.fill);
+  pruefe(formDaten.form === "pfeil" && formDaten.fett && formDaten.kursiv && /255, 0, 0|#ff0000/.test(fuell), "Format: Pfeil, rot gefüllt, fett und kursiv");
+
+  // Tabelle
+  await pp.click('[data-neu="tabelle"]');
+  await dlg({ spalten: 2, zeilen: 3 }, "Einfügen");
+  await pp.waitForSelector(".element-tabelle th");
+  await pp.keyboard.type("Begriff");
+  const tab = pp.locator(".element-tabelle").last();
+  await tab.locator("td").first().click();
+  await pp.keyboard.type("Wolke");
+  await tab.hover();
+  await tab.locator('[title="Zeile hinzufügen"]').click();
+  const tabDaten = (await letztes("tabelle")).daten;
+  pruefe(tabDaten.zellen.length === 4 && tabDaten.zellen[0][0] === "Begriff" && tabDaten.zellen[1][0] === "Wolke", "Tabelle mit Kopfzeile, Text und neuer Zeile");
+
+  // Animationen: zuerst die Form, dann die Tabelle
+  await elementMenue(pp.locator(".element-form").last(), "Animation hinzufügen");
+  await dlg({ effekt: "zoomen", nr: 1 }, "Übernehmen");
+  await elementMenue(pp.locator(".element-tabelle").last(), "Animation hinzufügen");
+  await dlg({ effekt: "einblenden", nr: 2 }, "Übernehmen");
+  pruefe((await pp.locator(".anim-marke").count()) === 2, "Animationen mit Reihenfolge-Nummern");
+
+  // Hilfslinien: Form an die Seitenmitte ziehen
+  const f2 = pp.locator(".element-form").last();
+  await f2.locator(".koerper").click();
+  const fd = await letztes("form");
+  const rahmenBox = await pp.locator("#tafel").boundingBox();
+  const massstab = rahmenBox.width / 1600;
+  const kb = await f2.locator(".koerper").boundingBox();
+  const zielX = rahmenBox.x + (800 - fd.b / 2 + 4) * massstab + (kb.x - (rahmenBox.x + fd.x * massstab));
+  await pp.mouse.move(kb.x + 20, kb.y + 20);
+  await pp.mouse.down();
+  await pp.mouse.move(zielX + 10, kb.y + 25, { steps: 6 });
+  await pp.mouse.move(zielX + 20, kb.y + 25, { steps: 2 });
+  const linieDa = (await pp.locator(".hilfslinie.senkrecht").count()) > 0;
+  await pp.mouse.up();
+  const fn = await letztes("form");
+  pruefe(linieDa && fn.x + fn.b / 2 === 800, "Hilfslinie: Form rastet in der Seitenmitte ein");
+
+  // Pfeiltasten, Duplizieren, Kopieren und Einfügen
+  await pp.keyboard.press("ArrowRight");
+  await pp.waitForTimeout(600);
+  pruefe((await letztes("form")).x === fn.x + 2, "Pfeiltaste verschiebt das gewählte Element");
+  await pp.keyboard.press("Control+d");
+  pruefe((await aktuelle()).elemente.filter((e) => e.typ === "form").length === 2, "Ctrl+D dupliziert");
+  await ed(() => {
+    const e = window.WandtafelEditor.tafel().seiten[window.WandtafelEditor.seite() - 1].elemente.find((x) => x.typ === "form");
+    const dt = new DataTransfer();
+    dt.setData("application/x-wandtafel-element", JSON.stringify(e));
+    document.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true }));
+  });
+  const formen = (await aktuelle()).elemente.filter((e) => e.typ === "form");
+  pruefe(formen.length === 3 && formen[2].anim && formen[2].anim.effekt === "zoomen", "Kopiertes Element einfügen (mit Animation)");
+  for (let i = 0; i < 2; i++) {
+    await pp.locator(".element-form").last().locator(".koerper").click();
+    await pp.keyboard.press("Delete");
+  }
+
+  // Notizen zur Seite
+  await pp.click("#notizen-knopf");
+  await pp.locator("#notizen").fill("Zuerst fragen, wo Regen herkommt.");
+  await pp.locator("#tafel").click({ position: { x: 5, y: 5 } });
+  pruefe((await aktuelle()).notizen === "Zuerst fragen, wo Regen herkommt.", "Notizen zur Seite");
+
+  // Uebergang fuer alle Seiten, eine ausgeblendete Seite danach
+  await pp.locator(".seite-eintrag.aktiv .seite-mehr").click();
+  await menuePunkt("Übergang");
+  await dlg({ art: "schieben", alle: true }, "Übernehmen");
+  pruefe(await ed(() => window.WandtafelEditor.tafel().seiten.every((s) => s.uebergang === "schieben")), "Übergang «Schieben» für alle Seiten");
+  await pp.click("#seite-layout");
+  await menuePunkt("Nur Titel");
+  await pp.locator(".seite-eintrag.aktiv .seite-mehr").click();
+  await menuePunkt("Beim Präsentieren ausblenden");
+  pruefe((await pp.locator(".seite-eintrag.ausgeblendet").count()) === 1, "Seite beim Präsentieren ausgeblendet");
+  await pp.locator(".seite-eintrag .seite-wahl").nth(ppNr - 1).click();
+  await pp.locator(".element-form").last().locator(".koerper").click();
+  await pp.waitForTimeout(800);
+  await foto(pp, "13-powerpoint-bearbeiten");
+
+  // Praesentieren: Animationen, ausgeblendete Seite, Uebergang, Laser, Abdecken, Sprung
+  await pp.click("#praesentieren");
+  await pp.waitForFunction(() => document.body.classList.contains("praesentieren"));
+  pruefe((await pp.locator(".element-form.anim-wartet, .element-tabelle.anim-wartet").count()) === 2, "Präsentieren: animierte Elemente zuerst versteckt");
+  await pp.keyboard.press("ArrowRight");
+  pruefe((await pp.locator(".element-form.anim-zoomen").count()) === 1 && (await pp.locator(".element-tabelle.anim-wartet").count()) === 1, "Weiter zeigt zuerst die Form");
+  await pp.keyboard.press("ArrowRight");
+  pruefe((await ed(() => window.WandtafelEditor.seite())) === ppNr && (await pp.locator(".anim-wartet").count()) === 0, "Weiter zeigt danach die Tabelle, noch auf derselben Seite");
+  // Playwright haelt Anfragen aus about:blank-Fenstern an, solange umgeleitet wird
+  await pk.unrouteAll({ behavior: "ignoreErrors" });
+  const [ref] = await Promise.all([pp.waitForEvent("popup"), pp.keyboard.press("r")]);
+  await ref.waitForSelector(".ref-notizen");
+  pruefe((await ref.locator(".ref-notizen").textContent()) === "Zuerst fragen, wo Regen herkommt." && /Animation 2 von 2/.test(await ref.locator("#ref-links h2").textContent()), "Referentenansicht mit Notizen und Animationsstand");
+  await ref.locator(".ref-vorschau").first().waitFor();
+  await ref.waitForTimeout(400);
+  if (bilderOrdner) await ref.screenshot({ path: path.join(bilderOrdner, "14-referentenansicht.png") });
+  await ref.locator(".ref-fuss button", { hasText: "Zurück" }).click();
+  pruefe((await pp.locator(".element-tabelle.anim-wartet").count()) === 1, "Zurück in der Referentenansicht nimmt die letzte Animation zurück");
+  await pp.bringToFront();
+  await pp.keyboard.press("ArrowRight");
+  await pp.keyboard.press("ArrowRight");
+  pruefe((await ed(() => window.WandtafelEditor.seite())) === ppNr + 2, "Ausgeblendete Seite wird übersprungen");
+  await pp.keyboard.press("ArrowLeft");
+  pruefe(
+    (await ed(() => window.WandtafelEditor.seite())) === ppNr && /ueb-schieben/.test(await pp.locator("#tafel").getAttribute("class")) && (await pp.locator(".anim-wartet").count()) === 0,
+    "Zurück mit Übergang, die Seite steht mit allen Animationen da"
+  );
+  await pp.keyboard.press("l");
+  await pp.mouse.move(500, 400);
+  pruefe((await pp.evaluate(() => document.body.classList.contains("mit-laser"))) && (await pp.locator("#laser").isVisible()), "Laserpointer");
+  await pp.keyboard.press("l");
+  await pp.keyboard.press("b");
+  pruefe(await pp.locator(".abdeckung-schwarz").isVisible(), "Taste B: schwarzer Bildschirm");
+  await pp.keyboard.press("x");
+  pruefe(!(await pp.locator("#abdeckung").isVisible()), "Beliebige Taste zeigt die Seite wieder");
+  await pp.keyboard.type("1");
+  await pp.keyboard.press("Enter");
+  pruefe((await ed(() => window.WandtafelEditor.seite())) === 1, "Seitennummer und Enter springt zu Seite 1");
+  await pp.keyboard.press("End");
+  await pp.waitForTimeout(800);
+  await foto(pp, "15-powerpoint-praesentieren");
+  await Promise.all([ref.waitForEvent("close", { timeout: 5000 }).catch(() => {}), pp.keyboard.press("Escape")]);
+  await pk.route(/^https?:\/\/(?!localhost)/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>extern</p>" }));
+  pruefe(ref.isClosed() && !(await pp.evaluate(() => document.body.classList.contains("praesentieren"))), "Ende der Präsentation schliesst die Referentenansicht");
+
+  // Seiten per Ziehen umsortieren
+  const ersteVorher = await ed(() => window.WandtafelEditor.tafel().seiten[0].id);
+  await pp.locator(".seite-eintrag").nth(1).dragTo(pp.locator(".seite-eintrag").nth(0));
+  pruefe((await ed(() => window.WandtafelEditor.tafel().seiten[1].id)) === ersteVorher, "Seiten per Ziehen umsortiert");
+
+  // PowerPoint-Export
+  await ed(() => window.WandtafelEditor.speichern());
+  const [pptxDl] = await Promise.all([pp.waitForEvent("download"), (async () => {
+    await pp.click("#export-knopf");
+    await menuePunkt("PowerPoint");
+  })()]);
+  const pptxPfad = path.join(TEMP, "tafel.pptx");
+  await pptxDl.saveAs(pptxPfad);
+  const pptx = fs.readFileSync(pptxPfad);
+  const roh = pptx.toString("utf8");
+  const folien = (roh.match(/ppt\/slides\/slide\d+\.xml/g) || []).filter((n, i, a) => a.indexOf(n) === i).length;
+  pruefe(
+    pptx.subarray(0, 2).toString() === "PK" && pptxDl.suggestedFilename().endsWith(".pptx") && folien === (await ed(() => window.WandtafelEditor.tafel().seiten.length)),
+    "PowerPoint-Datei mit einer Folie pro Seite"
+  );
+  pruefe(
+    roh.includes("Wasserkreislauf") && roh.includes('<a:buChar char="•"/>') && roh.includes('prst="rightArrow"') && roh.includes("<a:tbl>") && roh.includes("Zuerst fragen, wo Regen herkommt.") && roh.includes("<p:push") && roh.includes('show="0"'),
+    "PowerPoint: Text, Aufzählung, Form, Tabelle, Notizen, Übergang und ausgeblendete Folie"
+  );
+  if (process.env.PPTX_PRUEFEN) fs.copyFileSync(pptxPfad, process.env.PPTX_PRUEFEN);
+
+  // Offline-Ansicht: Animationen und Uebergaenge laufen auch dort
+  const [htmlDl] = await Promise.all([pp.waitForEvent("download"), (async () => {
+    await pp.click("#export-knopf");
+    await menuePunkt("HTML-Datei");
+  })()]);
+  const ppOffline = path.join(TEMP, "powerpoint.html");
+  await htmlDl.saveAs(ppOffline);
+  const nrNachher = await ed(() => window.WandtafelEditor.tafel().seiten.findIndex((s) => s.notizen) + 1);
+  const off = await pk.newPage();
+  off.on("pageerror", (e) => seitenFehler.push("powerpoint offline: " + e.message));
+  await off.goto("file://" + ppOffline + "#" + nrNachher);
+  await off.waitForSelector(".element-form", { state: "attached" });
+  const wartetVorher = await off.locator(".anim-wartet").count();
+  await off.keyboard.press("ArrowRight");
+  pruefe(wartetVorher === 2 && (await off.locator(".anim-wartet").count()) === 1, "Offline-Ansicht mit Animationen");
+  await pk.close();
+  }
+
   pruefe(seitenFehler.length === 0, "Keine JavaScript-Fehler" + (seitenFehler.length ? ": " + seitenFehler.join(" | ") : ""));
 } catch (e) {
   console.error(e);
