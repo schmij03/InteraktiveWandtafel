@@ -2110,9 +2110,10 @@
       }
     });
 
-    // Beim Verlassen des Vollbilds (Esc) auch die Praesentation beenden
+    // Beim Verlassen des Vollbilds (Esc) auch die Praesentation beenden.
+    // Nicht bei offener Referentenansicht: Chrome verlaesst das Vollbild schon beim Oeffnen des Fensters.
     document.addEventListener("fullscreenchange", function () {
-      if (!document.fullscreenElement && praesentiert) praesentieren(false);
+      if (!document.fullscreenElement && praesentiert && !(referent && !referent.closed)) praesentieren(false);
       einpassen();
     });
 
