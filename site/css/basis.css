@@ -49,7 +49,11 @@
   --weiss: #ffffff;
   --schrift: "Calibri", "Carlito", "Lato", "Segoe UI", Arial, sans-serif;
   --radius: 10px;
-  --schatten: 0 1px 3px rgba(23, 42, 75, 0.12), 0 4px 14px rgba(23, 42, 75, 0.08);
+  --schatten: 0 1px 3px rgba(23, 42, 75, 0.1), 0 6px 20px rgba(23, 42, 75, 0.07);
+  --schatten-hoch: 0 2px 6px rgba(23, 42, 75, 0.1), 0 16px 40px rgba(23, 42, 75, 0.16);
+  --flaeche: #eef2f6;
+  --rand: #e1e7ed;
+  --verlauf-kopf: linear-gradient(110deg, #1b2253 0%, #21295c 45%, #0b4a74 100%);
 }
 
 * {
@@ -66,7 +70,7 @@ body.oberflaeche {
   font-size: 17px;
   line-height: 1.45;
   color: var(--text);
-  background: #f7f8fa;
+  background: var(--flaeche);
 }
 
 .oberflaeche a:not(.knopf) {
@@ -89,19 +93,22 @@ body.oberflaeche {
   gap: 6px;
   min-height: 40px;
   padding: 8px 14px;
-  border: 1px solid var(--grau);
-  border-radius: 8px;
+  border: 1px solid #d3dbe2;
+  border-radius: 10px;
   background: var(--weiss);
   color: var(--text);
   text-decoration: none;
   cursor: pointer;
   line-height: 1.2;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .knopf:hover {
-  background: var(--hellgrau);
-  border-color: #bfbfbf;
+  background: var(--hellblau);
+  border-color: #aebdca;
+}
+.knopf:active {
+  transform: translateY(1px);
 }
 .knopf:focus-visible,
 .oberflaeche input:focus-visible,
@@ -120,6 +127,7 @@ body.oberflaeche {
   border-color: var(--petrol);
   color: var(--weiss);
   font-weight: 700;
+  box-shadow: 0 2px 8px rgba(6, 90, 130, 0.28);
 }
 .knopf-haupt:hover {
   background: #054a6b;
@@ -130,6 +138,7 @@ body.oberflaeche {
   border-color: var(--orange);
   color: var(--weiss);
   font-weight: 700;
+  box-shadow: 0 2px 8px rgba(228, 87, 46, 0.3);
 }
 .knopf-akzent:hover {
   background: var(--orange-dunkel);
@@ -166,9 +175,9 @@ body.oberflaeche {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--dunkelblau);
+  background: var(--verlauf-kopf);
   color: var(--weiss);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 18px rgba(23, 42, 75, 0.18);
 }
 .kopf-innen {
   padding: 10px 16px;
@@ -191,10 +200,12 @@ body.oberflaeche {
   text-decoration: none;
 }
 .marke-punkt {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--orange);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f07a4f, var(--orange) 55%, var(--orange-dunkel));
+  box-shadow: 0 3px 10px rgba(228, 87, 46, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
   color: var(--weiss);
   display: grid;
   place-items: center;
@@ -212,6 +223,16 @@ body.oberflaeche {
   font-size: 14px;
   opacity: 0.8;
 }
+.text-knopf {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--petrol);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .unsichtbar {
   position: absolute !important;
   width: 1px;
@@ -227,13 +248,24 @@ body.oberflaeche {
   max-height: calc(100vh - 32px);
   padding: 0;
   border: 0;
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-top: 5px solid var(--petrol);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(23, 30, 60, 0.35);
   font-family: var(--schrift);
   color: var(--text);
 }
 .dialog::backdrop {
   background: rgba(23, 30, 60, 0.45);
+  backdrop-filter: blur(3px);
+}
+.dialog[open] {
+  animation: dialog-auf 0.18s ease-out;
+}
+@keyframes dialog-auf {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
 }
 .dialog form {
   padding: 20px 22px 18px;
@@ -347,15 +379,17 @@ body.oberflaeche {
   display: flex;
   flex-direction: column;
   background: var(--weiss);
-  border-radius: var(--radius);
-  box-shadow: 0 6px 30px rgba(23, 42, 75, 0.25);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(23, 42, 75, 0.22);
+  animation: dialog-auf 0.12s ease-out;
   font-family: var(--schrift);
 }
 .klappmenue button {
   text-align: left;
   padding: 9px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--text);
   font-size: 16px;
@@ -364,7 +398,8 @@ body.oberflaeche {
 }
 .klappmenue button:hover,
 .klappmenue button:focus-visible {
-  background: var(--hellgrau);
+  background: var(--petrol-hell);
+  color: var(--dunkelblau);
   outline: none;
 }
 .klappmenue button.gefahr {
@@ -384,12 +419,13 @@ body.oberflaeche {
   bottom: 20px;
   transform: translateX(-50%);
   max-width: min(640px, calc(100vw - 32px));
-  padding: 10px 16px;
-  border-radius: var(--radius);
+  padding: 11px 18px;
+  border-radius: 12px;
   background: var(--dunkelblau);
   color: var(--weiss);
-  box-shadow: var(--schatten);
+  box-shadow: var(--schatten-hoch);
   z-index: 2000;
+  animation: dialog-auf 0.18s ease-out;
   font-family: var(--schrift);
 }
 .meldung[hidden] {
@@ -442,4 +478,12 @@ body.oberflaeche {
   max-height: calc(100vh - 260px);
   touch-action: none;
   cursor: crosshair;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open],
+  .klappmenue,
+  .meldung {
+    animation: none;
+  }
 }

@@ -11,53 +11,66 @@
   <link rel="stylesheet" href="css/tafel.css">
 </head>
 <body class="oberflaeche tafel-seite" data-modus="bearbeiten">
-  <header class="tafel-leiste" id="leiste">
-    <div class="leiste-gruppe">
-      <a class="marke-punkt" href="index.html" id="zur-uebersicht" title="Zur Übersicht (Fächer und Kapitel)">IW</a>
-      <div class="tafel-titel">
-        <label class="unsichtbar" for="titel">Titel der Tafel</label>
-        <input id="titel" type="text" value="" autocomplete="off" spellcheck="false">
-        <a id="ort" href="index.html">Übersicht</a>
+  <header class="tafel-kopf" id="leiste">
+    <div class="tafel-leiste">
+      <div class="leiste-gruppe">
+        <a class="marke-punkt" href="index.html" id="zur-uebersicht" title="Zur Übersicht (Fächer und Kapitel)">IW</a>
+        <div class="tafel-titel">
+          <label class="unsichtbar" for="titel">Titel der Tafel</label>
+          <input id="titel" type="text" value="" autocomplete="off" spellcheck="false">
+          <a id="ort" href="index.html">Übersicht</a>
+        </div>
+      </div>
+
+      <div class="leiste-gruppe modus-wahl" role="group" aria-label="Modus">
+        <button type="button" class="t-knopf aktiv" data-modus="bearbeiten" data-icon="zeiger" title="Bearbeiten: Elemente verschieben und ändern (Z)">Bearbeiten</button>
+        <button type="button" class="t-knopf" data-modus="zeichnen" data-icon="stift" title="Zeichnen: auf die ganze Seite schreiben (Z)">Zeichnen</button>
+      </div>
+
+      <div class="leiste-gruppe leiste-rechts">
+        <button type="button" class="t-knopf nur-icon" id="rueckgaengig" data-icon="zurueck" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig"></button>
+        <button type="button" class="t-knopf nur-icon" id="wiederholen" data-icon="vor" title="Wiederholen (Ctrl+Y)" aria-label="Wiederholen"></button>
+        <span class="leiste-trenner" aria-hidden="true"></span>
+        <button type="button" class="t-knopf aktiv" id="seiten-knopf" data-icon="seiten" title="Seitenliste ein- und ausblenden">Seiten</button>
+        <button type="button" class="t-knopf" id="notizen-knopf" data-icon="notiz" aria-pressed="false" title="Notizen zur Seite (für die Referentenansicht)">Notizen</button>
+        <button type="button" class="t-knopf" id="export-knopf" data-icon="export" aria-haspopup="true" aria-expanded="false" title="Exportieren: HTML, PDF, PowerPoint, Wandtafel-Datei">Exportieren</button>
+        <button type="button" class="t-knopf t-akzent" id="praesentieren" data-icon="praesentieren" title="Präsentieren (P)">Präsentieren</button>
       </div>
     </div>
 
-    <div class="leiste-gruppe" role="group" aria-label="Modus">
-      <button type="button" class="t-knopf aktiv" data-modus="bearbeiten" data-icon="zeiger" title="Bearbeiten: Elemente verschieben und ändern (Z)">Bearbeiten</button>
-      <button type="button" class="t-knopf" data-modus="zeichnen" data-icon="stift" title="Zeichnen: auf die ganze Seite schreiben (Z)">Zeichnen</button>
-    </div>
+    <div class="tafel-band">
+      <div class="band-gruppe nur-bearbeiten" role="group" aria-label="Einfügen">
+        <button type="button" class="t-knopf" data-neu="text" data-icon="text" title="Textfeld">Text</button>
+        <button type="button" class="t-knopf" data-neu="notiz" data-icon="notiz" title="Notizzettel">Notiz</button>
+        <button type="button" class="t-knopf" id="formen-knopf" data-icon="form" aria-haspopup="true" aria-expanded="false" title="Form: Rechteck, Kreis, Pfeil, Stern, Sprechblase, …">Form</button>
+        <button type="button" class="t-knopf" data-neu="tabelle" data-icon="tabelle" title="Tabelle">Tabelle</button>
+        <span class="band-trenner" aria-hidden="true"></span>
+        <button type="button" class="t-knopf" data-neu="bild" data-icon="bild" title="Bild hochladen oder Adresse (auch Ctrl+V oder Hineinziehen)">Bild</button>
+        <button type="button" class="t-knopf" data-neu="video" data-icon="video" title="Video: YouTube, Vimeo, Videodatei">Video</button>
+        <button type="button" class="t-knopf" data-neu="webseite" data-icon="webseite" title="Webseite oder iFrame-Snippet einbetten">Webseite</button>
+        <button type="button" class="t-knopf" data-neu="link" data-icon="link" title="Link als Karte, auf Wunsch mit QR-Code">Link</button>
+        <button type="button" class="t-knopf" data-neu="datei" data-icon="datei" title="Datei hochladen (PDF, Arbeitsblatt, Audio, …)">Datei</button>
+        <span class="band-trenner" aria-hidden="true"></span>
+        <button type="button" class="t-knopf" id="module-knopf" data-icon="timer" aria-haspopup="true" aria-expanded="false" title="Timer, Stoppuhr, Uhr, Ampel, Sozialform, Lostopf, Gruppen, Würfel">Module</button>
+      </div>
 
-    <div class="leiste-gruppe nur-bearbeiten" role="group" aria-label="Einfügen">
-      <button type="button" class="t-knopf" data-neu="text" data-icon="text" title="Textfeld">Text</button>
-      <button type="button" class="t-knopf" data-neu="notiz" data-icon="notiz" title="Notizzettel">Notiz</button>
-      <button type="button" class="t-knopf" id="formen-knopf" data-icon="form" aria-haspopup="true" aria-expanded="false" title="Form: Rechteck, Kreis, Pfeil, Stern, Sprechblase, …">Form</button>
-      <button type="button" class="t-knopf" data-neu="tabelle" data-icon="tabelle" title="Tabelle">Tabelle</button>
-      <button type="button" class="t-knopf" data-neu="bild" data-icon="bild" title="Bild hochladen oder Adresse (auch Ctrl+V oder Hineinziehen)">Bild</button>
-      <button type="button" class="t-knopf" data-neu="video" data-icon="video" title="Video: YouTube, Vimeo, Videodatei">Video</button>
-      <button type="button" class="t-knopf" data-neu="webseite" data-icon="webseite" title="Webseite oder iFrame-Snippet einbetten">Webseite</button>
-      <button type="button" class="t-knopf" data-neu="link" data-icon="link" title="Link als Karte, auf Wunsch mit QR-Code">Link</button>
-      <button type="button" class="t-knopf" data-neu="datei" data-icon="datei" title="Datei hochladen (PDF, Arbeitsblatt, Audio, …)">Datei</button>
-      <button type="button" class="t-knopf" id="module-knopf" data-icon="timer" aria-haspopup="true" aria-expanded="false" title="Timer, Stoppuhr, Uhr, Ampel, Sozialform, Lostopf, Gruppen, Würfel">Module</button>
-    </div>
+      <div class="band-gruppe nur-zeichnen" role="group" aria-label="Zeichenwerkzeuge">
+        <button type="button" class="t-knopf aktiv" data-werkzeug="stift" data-icon="stift" title="Stift">Stift</button>
+        <button type="button" class="t-knopf" data-werkzeug="marker" data-icon="marker" title="Textmarker">Marker</button>
+        <button type="button" class="t-knopf" data-werkzeug="radierer" data-icon="radierer" title="Radierer">Radierer</button>
+        <span class="band-trenner" aria-hidden="true"></span>
+        <span class="farben" id="farben"></span>
+        <span class="band-trenner" aria-hidden="true"></span>
+        <span class="dicken" id="dicken"></span>
+        <span class="band-trenner" aria-hidden="true"></span>
+        <button type="button" class="t-knopf" id="zeichnung-loeschen" data-icon="muell" title="Alle Zeichnungen dieser Seite löschen">Zeichnung</button>
+      </div>
 
-    <div class="leiste-gruppe nur-zeichnen" role="group" aria-label="Zeichenwerkzeuge">
-      <button type="button" class="t-knopf aktiv" data-werkzeug="stift" data-icon="stift" title="Stift">Stift</button>
-      <button type="button" class="t-knopf" data-werkzeug="marker" data-icon="marker" title="Textmarker">Marker</button>
-      <button type="button" class="t-knopf" data-werkzeug="radierer" data-icon="radierer" title="Radierer">Radierer</button>
-      <span class="farben" id="farben"></span>
-      <span class="dicken" id="dicken"></span>
-      <button type="button" class="t-knopf" id="zeichnung-loeschen" data-icon="muell" title="Alle Zeichnungen dieser Seite löschen">Zeichnung</button>
-    </div>
-
-    <div class="leiste-gruppe leiste-rechts">
-      <label class="unsichtbar" for="hintergrund">Hintergrund</label>
-      <select id="hintergrund" title="Hintergrund dieser Seite"></select>
-      <button type="button" class="t-knopf nur-icon" id="design-knopf" data-icon="design" title="Design der Seite: Farbe, Muster, Hintergrundbild" aria-label="Design der Seite"></button>
-      <button type="button" class="t-knopf nur-icon" id="rueckgaengig" data-icon="zurueck" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig"></button>
-      <button type="button" class="t-knopf nur-icon" id="wiederholen" data-icon="vor" title="Wiederholen (Ctrl+Y)" aria-label="Wiederholen"></button>
-      <button type="button" class="t-knopf aktiv" id="seiten-knopf" data-icon="seiten" title="Seitenliste ein- und ausblenden">Seiten</button>
-      <button type="button" class="t-knopf" id="notizen-knopf" data-icon="notiz" aria-pressed="false" title="Notizen zur Seite (für die Referentenansicht)">Notizen</button>
-      <button type="button" class="t-knopf" id="export-knopf" data-icon="export" aria-haspopup="true" aria-expanded="false" title="Exportieren: HTML, PDF, Wandtafel-Datei">Exportieren</button>
-      <button type="button" class="t-knopf t-akzent" id="praesentieren" data-icon="praesentieren" title="Präsentieren (P)">Präsentieren</button>
+      <div class="band-gruppe band-rechts">
+        <label class="unsichtbar" for="hintergrund">Hintergrund</label>
+        <select id="hintergrund" title="Hintergrund dieser Seite"></select>
+        <button type="button" class="t-knopf" id="design-knopf" data-icon="design" title="Design der Seite: Farbe, Muster, Hintergrundbild">Design</button>
+      </div>
     </div>
   </header>
 
@@ -99,12 +112,13 @@
   <div class="abdeckung" id="abdeckung" hidden title="Beliebige Taste oder Klick: weiter präsentieren"></div>
 
   <input type="file" id="bild-datei" accept="image/*" hidden>
-  <input type="file" id="import-datei" accept=".json,.html,application/json,text/html" hidden>
+  <input type="file" id="import-datei" accept=".pptx,.json,.html,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/json,text/html" hidden>
   <script src="js/gemeinsam.js"></script>
   <script src="js/speicher.js"></script>
   <script src="js/qrcode.js"></script>
   <script src="js/elemente.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/pptx-lesen.js"></script>
   <script src="js/pptx.js"></script>
   <script src="js/tafel.js"></script>
 </body>

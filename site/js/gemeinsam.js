@@ -188,9 +188,13 @@
       m.setAttribute("role", "status");
       document.body.appendChild(m);
     }
+    clearTimeout(meldungTakt);
+    if (!text) {
+      m.hidden = true;
+      return;
+    }
     m.textContent = text;
     m.hidden = false;
-    clearTimeout(meldungTakt);
     meldungTakt = setTimeout(function () {
       m.hidden = true;
     }, dauer || 3500);

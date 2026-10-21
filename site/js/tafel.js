@@ -1789,7 +1789,7 @@
       },
       { trenner: true },
       {
-        text: "Seiten aus Datei hinzufügen …",
+        text: "Seiten aus Datei oder PowerPoint hinzufügen …",
         aktion: function () {
           document.getElementById("import-datei").click();
         }
@@ -2173,7 +2173,7 @@
         Array.prototype.forEach.call(dateien, function (d) {
           if (/^image\//.test(d.type)) bildEinfuegen(d, ort);
           else if (/^video\//.test(d.type)) videoEinfuegen(d, ort);
-          else if (/\.wandtafel\.json$/i.test(d.name) || /\.html?$/i.test(d.name)) seitenImportieren(d);
+          else if (/\.wandtafel\.json$/i.test(d.name) || /\.(html?|pptx)$/i.test(d.name)) seitenImportieren(d);
           else dateiEinfuegen(d, ort);
         });
         return;

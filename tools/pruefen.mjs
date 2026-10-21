@@ -794,6 +794,97 @@ try {
   await pk.close();
   }
 
+  // ---------- PowerPoint importieren ----------
+  {
+  console.log("PowerPoint importieren");
+  const ik = await browser.newContext({ viewport: { width: 1400, height: 860 }, acceptDownloads: true });
+  const ip = await ik.newPage();
+  ip.on("pageerror", (e) => seitenFehler.push("pptx-import: " + e.message));
+  const ied = (fn, arg) => ip.evaluate(fn, arg);
+  await ip.goto(BASIS);
+  await ip.waitForSelector("#willkommen-pptx");
+  pruefe(await ip.locator("#pptx-import").isVisible(), "Knopf «PowerPoint importieren» oben");
+  // Vorlage: tools/testdaten/beispiel.pptx (4:3, Platzhalter, Design-Farben, gepackt wie von PowerPoint)
+  await ip.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "testdaten", "beispiel.pptx"));
+  const fertig = ip.locator("dialog[open]");
+  await fertig.waitFor();
+  pruefe(/4 Folien/.test(await fertig.textContent()) && /1 Diagramm\b/.test(await fertig.textContent()), "Zusammenfassung mit Hinweis auf nicht übernommene Diagramme");
+  await ip.waitForTimeout(300);
+  await foto(ip, "16-pptx-import");
+  await fertig.locator("button:has-text('Tafel öffnen')").click();
+  await ip.waitForURL(/tafel\.html\?t=/);
+  await ip.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+  const it = await ied(() => window.WandtafelEditor.tafel());
+  const [i1, i2, i3, i4] = it.seiten;
+  const textVon = (s, t) => s.elemente.find((e) => (e.daten.text || "").includes(t));
+  pruefe(it.titel === "Wasserkreislauf" && it.seiten.length === 4 && i2.titel === "Stationen", "Tafel mit Titel, 4 Seiten und Seitentiteln aus den Folientiteln");
+  const titel1 = textVon(i1, "Der Wasserkreislauf");
+  pruefe(
+    titel1 && titel1.daten.farbe === "#ffffff" && titel1.daten.ausrichtung === "center" && titel1.daten.groesse === 73 && titel1.x === 290,
+    "Titel mit Farbe, Ausrichtung und Grösse aus Master und Layout, 4:3 mittig eingepasst"
+  );
+  pruefe(i1.hintergrund === "eigen" && i1.hgFarbe === "#21295c" && i1.notizen === "Begrüssung und Vorwissen sammeln." && i1.uebergang === "blenden", "Hintergrund, Notizen und Übergang");
+  const liste = textVon(i2, "Verdunstung");
+  pruefe(liste && liste.daten.liste === "punkte" && liste.daten.groesse === 53 && liste.daten.text.split("\n").length === 4, "Aufzählung mit Stufen aus dem Master");
+  const stern = i2.elemente.find((e) => e.typ === "form");
+  pruefe(stern && stern.daten.form === "stern" && stern.daten.fuellung === "#e4572e" && stern.daten.farbe === "#ffffff" && stern.anim && stern.anim.effekt === "fliegen", "Form mit Füllung, Textfarbe aus dem Formstil und Animation");
+  const bild = i2.elemente.find((e) => e.typ === "bild");
+  pruefe(bild && bild.daten.medium, "Bild im Browser gespeichert");
+  const tab = i3.elemente.find((e) => e.typ === "tabelle");
+  pruefe(tab && tab.daten.kopf && tab.daten.zellen[2][0] === "Lugano", "Tabelle mit Kopfzeile");
+  pruefe(i3.elemente.filter((e) => e.typ === "form").length === 2 && i3.striche.length === 1 && i3.striche[0].farbe === "#2e7d32", "Gruppe aufgelöst, Linie als Zeichnung");
+  const zusatz = textVon(i4, "Zusatz");
+  pruefe(i4.ausgeblendet && zusatz && zusatz.daten.schrift === "serif" && zusatz.daten.fett && i4.elemente.some((e) => e.typ === "video" && e.daten.medium), "Ausgeblendete Folie mit Schriftart und eingebettetem Video");
+  await foto(ip, "17-pptx-titelfolie");
+  await ip.locator(".seite-eintrag .seite-wahl").nth(1).click();
+  await ip.waitForSelector(".element-form");
+  await ip.waitForTimeout(400);
+  await foto(ip, "18-pptx-folie2");
+
+  // Rundlauf: als PowerPoint exportieren und die Datei wieder als Seiten anhängen
+  await ied(() => window.WandtafelEditor.speichern());
+  const [rundDl] = await Promise.all([ip.waitForEvent("download"), (async () => {
+    await ip.click("#export-knopf");
+    await ip.locator(".klappmenue button", { hasText: "PowerPoint" }).first().click();
+  })()]);
+  const rundPfad = path.join(TEMP, "rundlauf.pptx");
+  await rundDl.saveAs(rundPfad);
+  await ip.setInputFiles("#import-datei", rundPfad);
+  await ip.waitForFunction(() => window.WandtafelEditor.tafel().seiten.length === 8);
+  const zurueck = await ied(() => window.WandtafelEditor.tafel().seiten.slice(4));
+  const r2 = zurueck[1];
+  const rListe = r2.elemente.find((e) => (e.daten.text || "").includes("Verdunstung"));
+  const rStern = r2.elemente.find((e) => e.typ === "form" && e.daten.form === "stern");
+  const rTab = zurueck[2].elemente.find((e) => e.typ === "tabelle");
+  pruefe(
+    rListe && rListe.daten.liste === "punkte" && Math.abs(rListe.daten.groesse - 53) <= 1 && Math.abs(rListe.x - liste.x) <= 1 && rStern && rStern.daten.fuellung === "#e4572e" &&
+      rTab && Math.abs(rTab.x - tab.x) <= 1 && Math.abs(rTab.b - tab.b) <= 1 && zurueck[0].notizen === i1.notizen && zurueck[3].ausgeblendet,
+    "Rundlauf PowerPoint-Export und -Import: Lage, Grösse, Liste, Form, Tabelle, Notizen"
+  );
+
+  // Beispiel-Lektion aus der KI-Anleitung (docs/ki-anleitung.md) laesst sich importieren
+  console.log("Beispiel-Lektion der KI-Anleitung");
+  await ip.goto(BASIS);
+  await ip.waitForSelector(".fach-eintrag");
+  await ip.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "..", "docs", "beispiel-lektion.wandtafel.json"));
+  const wohin = ip.locator("dialog[open]");
+  await wohin.waitFor();
+  await wohin.locator("button[type=submit]").click();
+  await ip.waitForSelector(".tafel-karte:has-text('Der Wasserkreislauf (Lektion)')");
+  await ip.locator(".tafel-karte:has-text('Der Wasserkreislauf (Lektion)') a.knopf-haupt").click();
+  await ip.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+  const lektion = await ied(() => window.WandtafelEditor.tafel());
+  const typen = new Set(lektion.seiten.flatMap((s) => s.elemente.map((e) => e.typ)));
+  pruefe(
+    lektion.seiten.length === 5 && ["timer", "sozialform", "gruppen", "zufall", "ampel", "tabelle", "form", "link"].every((t) => typen.has(t)) && lektion.seiten.every((s) => s.notizen),
+    "Beispiel-Lektion: 5 Seiten mit Modulen, Tabelle, Formen und Notizen"
+  );
+  await ip.waitForSelector(".element-timer");
+  pruefe((await ip.locator(".element").count()) === 5, "Beispiel-Lektion: alle Elemente der ersten Seite sichtbar");
+  await foto(ip, "19-ki-lektion");
+  await ik.close();
+  }
+
   pruefe(seitenFehler.length === 0, "Keine JavaScript-Fehler" + (seitenFehler.length ? ": " + seitenFehler.join(" | ") : ""));
 } catch (e) {
   console.error(e);
