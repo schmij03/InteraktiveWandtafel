@@ -21,8 +21,9 @@
       <div class="werkzeuge">
         <label class="unsichtbar" for="suche">Tafeln suchen</label>
         <input id="suche" type="search" placeholder="Tafeln suchen …" autocomplete="off">
-        <button type="button" class="knopf" id="importieren" title="Wandtafel-Datei (.json) oder exportierte HTML-Datei importieren">Importieren</button>
-        <button type="button" class="knopf" id="sichern" title="Alle Fächer mit allen Tafeln als eine Datei speichern">Alles sichern</button>
+        <button type="button" class="knopf knopf-pptx" id="pptx-import" data-icon="praesentieren" title="PowerPoint-Datei (.pptx) hochladen: jede Folie wird eine Seite">PowerPoint importieren</button>
+        <button type="button" class="knopf" id="importieren" data-icon="import" title="PowerPoint (.pptx), Wandtafel-Datei (.json) oder exportierte HTML-Datei importieren">Importieren</button>
+        <button type="button" class="knopf" id="sichern" data-icon="export" title="Alle Fächer mit allen Tafeln als eine Datei speichern">Alles sichern</button>
       </div>
     </div>
   </header>
@@ -39,12 +40,13 @@
     </main>
   </div>
 
-  <input type="file" id="import-datei" accept=".json,.html,application/json,text/html" hidden>
+  <input type="file" id="import-datei" accept=".pptx,.json,.html,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/json,text/html" hidden>
   <script src="js/gemeinsam.js"></script>
   <script src="js/speicher.js"></script>
   <script src="js/qrcode.js"></script>
   <script src="js/elemente.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/pptx-lesen.js"></script>
   <script src="js/start.js"></script>
 </body>
 </html>

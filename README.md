@@ -15,8 +15,11 @@ interaktiven Wandtafel von fobizz und aufgebaut wie die Tafel in
 - **Wie in PowerPoint:** Formen, Tabellen, Textformat (Schriftart, kursiv, unterstrichen, Aufzählungen),
   Folienlayouts, **Animationen**, **Folienübergänge**, ausgeblendete Seiten, **Notizen** mit
   **Referentenansicht**, Hilfslinien, Laserpointer, schwarzer/weisser Bildschirm
+- **PowerPoint importieren:** eine `.pptx`-Datei hochladen, jede Folie wird eine bearbeitbare Seite
 - **Export** als HTML-Datei (offline präsentieren), PDF, **PowerPoint (.pptx)** und Wandtafel-Datei;
   **Import** auf jedem Gerät
+- **Anleitung für KI:** aus einer PowerPoint eine ganze Lektion mit Phasen und Modulen erstellen lassen,
+  siehe [docs/ki-anleitung.md](docs/ki-anleitung.md)
 
 Wie die fobizz-Tafel untersucht und nachgebaut wurde (REA-Vorgehen mit Quellen, Abgleich und Grenzen):
 [docs/rea-analyse.md](docs/rea-analyse.md).
@@ -27,7 +30,7 @@ Wie die fobizz-Tafel untersucht und nachgebaut wurde (REA-Vorgehen mit Quellen, 
 Dieses Repository                                GitHub Pages
 site/      Website (HTML, CSS, JavaScript)  ──►  index.html   Übersicht: Fächer, Kapitel, Tafeln
 tools/     Vorschau-Server, Browsertest          tafel.html   Tafel bearbeiten und präsentieren
-docs/      REA-Analyse
+docs/      REA-Analyse, Anleitung für KI
 ```
 
 Bei jedem Push prüft `.github/workflows/website.yml` die App im Browser. Auf dem Hauptbranch wird `site/`
@@ -53,6 +56,7 @@ Run workflow* starten. Die Seite ist dann unter `https://schmij03.github.io/Inte
 | Umbenennen, sortieren, duplizieren, verschieben, löschen | Menü «…» bei Fach, Kapitel oder Tafel |
 | Suchen | Suchfeld oben, sucht in Titeln, Texten und Adressen aller Tafeln |
 | Beispiel | bei leerer Sammlung «Beispiel laden» |
+| PowerPoint | «PowerPoint importieren» oben (oder `.pptx` auf die Seite ziehen); danach öffnet sich die neue Tafel |
 
 ### Tafel
 
@@ -102,8 +106,34 @@ Hochgeladene Videodateien bleiben im Browser; sehr grosse Videos füllen den Spe
 | PowerPoint (`.pptx`) | Tafel > Exportieren > PowerPoint | eine Folie pro Seite (16:9) mit bearbeitbaren Texten, Formen und Tabellen, Bildern, Zeichnungen, Hintergrund, Notizen, Übergängen und ausgeblendeten Folien; Videos, Webseiten, Links und Dateien als Karte mit anklickbarer Adresse. Animationen und Module (Timer, Lostopf, …) sind nicht enthalten |
 | Wandtafel-Datei (`.wandtafel.json`) | Tafel, Kapitel oder Fach | zum Weitergeben an Kolleginnen und Kollegen oder auf ein anderes Gerät |
 | Sicherung | «Alles sichern» oben | alle Fächer, Kapitel, Tafeln und Medien in einer Datei |
-| Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | Wandtafel-Dateien und exportierte HTML-Dateien; Fächer und Kapitel mit gleichem Namen werden ergänzt |
-| Seiten hinzufügen | Tafel > Exportieren > «Seiten aus Datei hinzufügen» | hängt die Seiten einer anderen Tafel an |
+| Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | PowerPoint-Dateien (`.pptx`), Wandtafel-Dateien und exportierte HTML-Dateien; Fächer und Kapitel mit gleichem Namen werden ergänzt |
+| Seiten hinzufügen | Tafel > Exportieren > «Seiten aus Datei oder PowerPoint hinzufügen», oder Datei auf die Tafel ziehen | hängt die Seiten einer anderen Tafel oder die Folien einer PowerPoint an |
+
+### PowerPoint importieren
+
+Jede Folie wird eine Seite. Folien im Format 4:3 werden mittig eingepasst.
+
+| In PowerPoint | Auf der Tafel |
+|---|---|
+| Titel, Textfelder, Platzhalter | Text mit Schriftgrösse, Farbe, fett, kursiv, unterstrichen, Ausrichtung, Aufzählung oder Nummerierung (auch aus Folienmaster und Layout) |
+| Formen | Form (Rechteck, abgerundet, Ellipse, Dreieck, Raute, Sechseck, Pfeil, Stern, Sprechblase; andere werden zur ähnlichsten) mit Füllung, Rand und Text |
+| Bilder, Tabellen | Bild (im Browser gespeichert), Tabelle mit Kopfzeile |
+| Linien und Verbinder | Zeichnung |
+| Videos | Videodatei, YouTube oder Vimeo |
+| Gruppen | einzelne Elemente |
+| Hintergrund, Master, Layout | Farbe oder Bild als eigenes Design; Logos und Formen aus Master und Layout auf jeder Seite |
+| Notizen, Übergänge, Animationen (Erscheinen), ausgeblendete Folien | Notizen, Übergang, Animation, ausgeblendete Seite |
+
+Nicht übernommen und nach dem Import aufgezählt: Diagramme, SmartArt, eingebettete Objekte, Audio und Grafiken im
+Windows-Format (EMF/WMF). Drehungen, Schatten und Text mit mehreren Formaten in einem Feld werden vereinfacht
+(das Format mit dem meisten Text gilt). Ältere `.ppt`-Dateien zuerst in PowerPoint als `.pptx` speichern.
+
+### Lektion mit KI erstellen
+
+[docs/ki-anleitung.md](docs/ki-anleitung.md) beschreibt für ChatGPT, Claude, Copilot und andere, wie aus einer
+PowerPoint eine Lektion (Einstieg, Input, Erarbeitung, Sicherung, Abschluss) mit Timer, Sozialform, Gruppen, Lostopf,
+Tabellen und Lehrer-Notizen wird: Prompt zum Kopieren, vollständiges Datenformat, Checkliste und eine
+[Beispiel-Lektion](docs/beispiel-lektion.wandtafel.json) zum Importieren.
 
 **Wichtig:** Die Daten liegen nur in diesem Browser auf diesem Gerät. Browserdaten löschen löscht auch die Tafeln.
 Regelmässig «Alles sichern» verwenden.
@@ -131,8 +161,10 @@ die App nicht zuverlässig, weil Browser dort den Speicher einschränken; export
 | Speicher im Browser (IndexedDB) | `site/js/speicher.js` |
 | Export und Import | `site/js/export.js`, Offline-Ansicht `site/js/ansicht.js` |
 | PowerPoint-Export (eigenes ZIP und Office Open XML, ohne Bibliothek) | `site/js/pptx.js` |
+| PowerPoint-Import (ZIP mit `DecompressionStream` entpacken, Office Open XML lesen) | `site/js/pptx-lesen.js` |
 | Dialoge, Menüs, Icons | `site/js/gemeinsam.js`, `site/css/basis.css` |
 | Vorschau-Server, Browsertest | `tools/vorschau.mjs`, `tools/pruefen.mjs`, `tools/server.mjs` |
+| Test-PowerPoint für den Import (erzeugt mit python-pptx) | `tools/testdaten/beispiel.pptx`, `tools/testdaten/beispiel-erzeugen.py` |
 
 Schrift: Calibri, sonst die metrisch gleiche Carlito (lokal in `site/fonts/`, SIL Open Font License).
 Farben wie in MI_Connected3 als Variablen oben in `site/css/basis.css`.

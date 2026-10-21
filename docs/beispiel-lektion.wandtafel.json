@@ -1,0 +1,456 @@
+{
+ "format": "interaktive-wandtafel",
+ "version": 1,
+ "art": "tafel",
+ "tafel": {
+  "id": "t-wasserkreislauf",
+  "version": 1,
+  "titel": "Der Wasserkreislauf (Lektion)",
+  "seiten": [
+   {
+    "id": "s1",
+    "titel": "Einstieg",
+    "hintergrund": "gruen",
+    "uebergang": "blenden",
+    "notizen": "Phase: Einstieg (5 Min.)\nZiel: Vorwissen aktivieren.\nImpuls vorlesen, 3 Minuten Partnergespräch, dann 2–3 Vermutungen im Plenum sammeln.",
+    "elemente": [
+     {
+      "id": "e1",
+      "typ": "text",
+      "x": 80,
+      "y": 60,
+      "b": 1440,
+      "h": 140,
+      "z": 1,
+      "daten": {
+       "text": "Woher kommt das Wasser in deinem Glas?",
+       "groesse": 64,
+       "fett": true,
+       "farbe": "#ffffff"
+      }
+     },
+     {
+      "id": "e2",
+      "typ": "notiz",
+      "x": 80,
+      "y": 260,
+      "b": 620,
+      "h": 330,
+      "z": 2,
+      "daten": {
+       "text": "Bevor es aus dem Hahn kam: Wo war dieses Wasser vor einer Woche? Vor einem Jahr?",
+       "groesse": 34,
+       "farbe": "#fff3a8"
+      }
+     },
+     {
+      "id": "e3",
+      "typ": "sozialform",
+      "x": 760,
+      "y": 260,
+      "b": 400,
+      "h": 330,
+      "z": 3,
+      "daten": {
+       "form": "partner"
+      }
+     },
+     {
+      "id": "e4",
+      "typ": "timer",
+      "x": 1220,
+      "y": 260,
+      "b": 320,
+      "h": 330,
+      "z": 4,
+      "daten": {
+       "sekunden": 180
+      }
+     },
+     {
+      "id": "e5",
+      "typ": "text",
+      "x": 80,
+      "y": 660,
+      "b": 1440,
+      "h": 120,
+      "z": 5,
+      "daten": {
+       "text": "Sprecht zu zweit und notiert eine Vermutung.",
+       "groesse": 36,
+       "farbe": "#ffffff",
+       "kursiv": true
+      }
+     }
+    ],
+    "striche": []
+   },
+   {
+    "id": "s2",
+    "titel": "Die vier Stationen",
+    "hintergrund": "weiss",
+    "uebergang": "schieben",
+    "notizen": "Phase: Input (10 Min.)\nStationen nacheinander einblenden (Weiter-Taste) und jeweils ein Alltagsbeispiel erfragen.",
+    "elemente": [
+     {
+      "id": "e1",
+      "typ": "text",
+      "x": 80,
+      "y": 40,
+      "b": 1440,
+      "h": 110,
+      "z": 1,
+      "daten": {
+       "text": "Die vier Stationen des Wasserkreislaufs",
+       "groesse": 52,
+       "fett": true,
+       "farbe": "#21295c"
+      }
+     },
+     {
+      "id": "e2",
+      "typ": "form",
+      "x": 80,
+      "y": 220,
+      "b": 330,
+      "h": 240,
+      "z": 2,
+      "daten": {
+       "form": "ellipse",
+       "text": "1 Verdunstung",
+       "groesse": 32,
+       "fett": true,
+       "fuellung": "#ffe1c2",
+       "rand": "#e4572e",
+       "randDicke": 3
+      },
+      "anim": {
+       "effekt": "zoomen",
+       "nr": 1
+      }
+     },
+     {
+      "id": "e3",
+      "typ": "form",
+      "x": 460,
+      "y": 220,
+      "b": 330,
+      "h": 240,
+      "z": 3,
+      "daten": {
+       "form": "ellipse",
+       "text": "2 Kondensation",
+       "groesse": 32,
+       "fett": true,
+       "fuellung": "#d6ecfb",
+       "rand": "#065a82",
+       "randDicke": 3
+      },
+      "anim": {
+       "effekt": "zoomen",
+       "nr": 2
+      }
+     },
+     {
+      "id": "e4",
+      "typ": "form",
+      "x": 840,
+      "y": 220,
+      "b": 330,
+      "h": 240,
+      "z": 4,
+      "daten": {
+       "form": "ellipse",
+       "text": "3 Niederschlag",
+       "groesse": 32,
+       "fett": true,
+       "fuellung": "#d6ecfb",
+       "rand": "#065a82",
+       "randDicke": 3
+      },
+      "anim": {
+       "effekt": "zoomen",
+       "nr": 3
+      }
+     },
+     {
+      "id": "e5",
+      "typ": "form",
+      "x": 1220,
+      "y": 220,
+      "b": 330,
+      "h": 240,
+      "z": 5,
+      "daten": {
+       "form": "ellipse",
+       "text": "4 Abfluss und Versickerung",
+       "groesse": 30,
+       "fett": true,
+       "fuellung": "#d4f1d6",
+       "rand": "#2e7d32",
+       "randDicke": 3
+      },
+      "anim": {
+       "effekt": "zoomen",
+       "nr": 4
+      }
+     },
+     {
+      "id": "e6",
+      "typ": "text",
+      "x": 80,
+      "y": 540,
+      "b": 1440,
+      "h": 280,
+      "z": 6,
+      "daten": {
+       "text": "Die Sonne erwärmt Wasser, es steigt als Dampf auf.\nIn der Höhe kühlt der Dampf ab und bildet Wolken.\nTropfen werden schwer und fallen als Regen oder Schnee.\nDas Wasser fliesst in Bäche und Seen oder versickert im Boden.",
+       "groesse": 34,
+       "liste": "nummern"
+      },
+      "anim": {
+       "effekt": "einblenden",
+       "nr": 5
+      }
+     }
+    ],
+    "striche": []
+   },
+   {
+    "id": "s3",
+    "titel": "Erarbeitung in Gruppen",
+    "hintergrund": "kariert",
+    "uebergang": "wischen",
+    "notizen": "Phase: Erarbeitung (15 Min.)\nGruppen auslosen, jede Gruppe übernimmt eine Station und erklärt sie mit einer Skizze.",
+    "elemente": [
+     {
+      "id": "e1",
+      "typ": "text",
+      "x": 80,
+      "y": 40,
+      "b": 1000,
+      "h": 110,
+      "z": 1,
+      "daten": {
+       "text": "Auftrag für eure Gruppe",
+       "groesse": 52,
+       "fett": true,
+       "farbe": "#21295c"
+      }
+     },
+     {
+      "id": "e2",
+      "typ": "text",
+      "x": 80,
+      "y": 170,
+      "b": 760,
+      "h": 420,
+      "z": 2,
+      "daten": {
+       "text": "Lest den Artikel zu eurer Station.\nZeichnet eine einfache Skizze.\nSchreibt zwei Sätze dazu.\nBereitet eine Erklärung von 1 Minute vor.",
+       "groesse": 34,
+       "liste": "nummern"
+      }
+     },
+     {
+      "id": "e3",
+      "typ": "gruppen",
+      "x": 900,
+      "y": 170,
+      "b": 640,
+      "h": 440,
+      "z": 3,
+      "daten": {
+       "namen": "Anna\nBen\nCelina\nDario\nElif\nFinn\nGiulia\nHamza",
+       "nach": "anzahl",
+       "gruppenzahl": 4
+      }
+     },
+     {
+      "id": "e4",
+      "typ": "link",
+      "x": 80,
+      "y": 630,
+      "b": 760,
+      "h": 200,
+      "z": 4,
+      "daten": {
+       "url": "https://de.wikipedia.org/wiki/Wasserkreislauf",
+       "titel": "Wikipedia: Wasserkreislauf",
+       "qr": true
+      }
+     },
+     {
+      "id": "e5",
+      "typ": "timer",
+      "x": 900,
+      "y": 650,
+      "b": 320,
+      "h": 220,
+      "z": 5,
+      "daten": {
+       "sekunden": 900
+      }
+     },
+     {
+      "id": "e6",
+      "typ": "sozialform",
+      "x": 1260,
+      "y": 650,
+      "b": 280,
+      "h": 220,
+      "z": 6,
+      "daten": {
+       "form": "gruppe"
+      }
+     }
+    ],
+    "striche": []
+   },
+   {
+    "id": "s4",
+    "titel": "Sicherung",
+    "hintergrund": "weiss",
+    "uebergang": "blenden",
+    "notizen": "Phase: Sicherung (10 Min.)\nGruppen tragen ihre Ergebnisse in die Tabelle ein (direkt in die Zellen tippen).",
+    "elemente": [
+     {
+      "id": "e1",
+      "typ": "text",
+      "x": 80,
+      "y": 40,
+      "b": 1440,
+      "h": 110,
+      "z": 1,
+      "daten": {
+       "text": "Was passiert an jeder Station?",
+       "groesse": 52,
+       "fett": true,
+       "farbe": "#21295c"
+      }
+     },
+     {
+      "id": "e2",
+      "typ": "tabelle",
+      "x": 80,
+      "y": 180,
+      "b": 1440,
+      "h": 420,
+      "z": 2,
+      "daten": {
+       "zellen": [
+        [
+         "Station",
+         "Was passiert?",
+         "Beispiel aus dem Alltag"
+        ],
+        [
+         "Verdunstung",
+         "",
+         ""
+        ],
+        [
+         "Kondensation",
+         "",
+         ""
+        ],
+        [
+         "Niederschlag",
+         "",
+         ""
+        ],
+        [
+         "Abfluss und Versickerung",
+         "",
+         ""
+        ]
+       ],
+       "kopf": true,
+       "groesse": 28
+      }
+     },
+     {
+      "id": "e3",
+      "typ": "notiz",
+      "x": 80,
+      "y": 650,
+      "b": 700,
+      "h": 200,
+      "z": 3,
+      "daten": {
+       "text": "Merke: Das Wasser auf der Erde wird nicht weniger, es ist immer im Kreislauf unterwegs.",
+       "groesse": 30,
+       "farbe": "#d4f1d6"
+      }
+     }
+    ],
+    "striche": []
+   },
+   {
+    "id": "s5",
+    "titel": "Abschluss",
+    "hintergrund": "dunkel",
+    "uebergang": "kreis",
+    "notizen": "Phase: Abschluss (5 Min.)\nZwei Kinder auslosen, die den Kreislauf in eigenen Worten erklären. Selbsteinschätzung mit der Ampel.",
+    "elemente": [
+     {
+      "id": "e1",
+      "typ": "text",
+      "x": 80,
+      "y": 40,
+      "b": 1440,
+      "h": 110,
+      "z": 1,
+      "daten": {
+       "text": "Erkläre den Wasserkreislauf in drei Sätzen.",
+       "groesse": 52,
+       "fett": true,
+       "farbe": "#ffffff"
+      }
+     },
+     {
+      "id": "e2",
+      "typ": "zufall",
+      "x": 80,
+      "y": 190,
+      "b": 560,
+      "h": 420,
+      "z": 2,
+      "daten": {
+       "namen": "Anna\nBen\nCelina\nDario\nElif\nFinn\nGiulia\nHamza",
+       "ohne": true
+      }
+     },
+     {
+      "id": "e3",
+      "typ": "ampel",
+      "x": 700,
+      "y": 190,
+      "b": 220,
+      "h": 500,
+      "z": 3,
+      "daten": {
+       "licht": ""
+      }
+     },
+     {
+      "id": "e4",
+      "typ": "notiz",
+      "x": 980,
+      "y": 190,
+      "b": 560,
+      "h": 420,
+      "z": 4,
+      "daten": {
+       "text": "Grün: Ich kann es erklären.\nGelb: Ich bin noch unsicher.\nRot: Ich brauche Hilfe.",
+       "groesse": 30,
+       "farbe": "#d6ecfb"
+      }
+     }
+    ],
+    "striche": []
+   }
+  ]
+ },
+ "medien": {}
+}

@@ -342,8 +342,15 @@
   }
 
   function importDatei(datei) {
+    var gelesen = null;
+    var warten = null;
+    if (W.PptxLesen && W.PptxLesen.istPptx(datei)) {
+      warten = true;
+      W.melden("PowerPoint wird gelesen …", 60000);
+    }
     X.paketLesen(datei)
       .then(function (paket) {
+        gelesen = paket;
         if (paket.art === "sammlung") return X.importieren(paket);
         if (importZiel) return X.importieren(paket, importZiel);
         // Einzelne Tafel: Kapitel waehlen (oder neues Fach anlegen)
@@ -371,7 +378,9 @@
       })
       .then(function (ergebnis) {
         importZiel = null;
+        if (warten) W.melden("");
         if (!ergebnis) return;
+        if (gelesen && gelesen.quelle === "pptx" && ergebnis.tafelId) return pptxFertig(gelesen, ergebnis);
         return laden().then(function () {
           if (ergebnis.fachId) fachId = ergebnis.fachId;
           zeichnen();
@@ -380,8 +389,32 @@
       })
       .catch(function (f) {
         importZiel = null;
+        if (warten) W.melden("");
         fehler(f);
       });
+  }
+
+  /** Nach dem PowerPoint-Import: kurz zusammenfassen und die neue Tafel öffnen */
+  function pptxFertig(paket, ergebnis) {
+    var seiten = paket.tafel.seiten;
+    var elemente = seiten.reduce(function (n, s) {
+      return n + s.elemente.length;
+    }, 0);
+    var felder = [];
+    if (paket.hinweis) felder.push({ typ: "hinweis", text: paket.hinweis });
+    return laden().then(function () {
+      if (ergebnis.fachId) fachId = ergebnis.fachId;
+      zeichnen();
+      return W.dialog({
+        titel: "PowerPoint übernommen",
+        text: "«" + paket.tafel.titel + "»: " + mehrzahl(seiten.length, "Folie", "Folien") + " mit " + mehrzahl(elemente, "Element", "Elementen") + " sind jetzt eine Tafel. Texte, Formen und Tabellen lassen sich direkt bearbeiten; ergänze Module wie Timer oder Lostopf.",
+        felder: felder,
+        knopf: "Tafel öffnen",
+        abbrechen: "Später"
+      }).then(function (w) {
+        if (w) window.location.href = "tafel.html?t=" + encodeURIComponent(ergebnis.tafelId);
+      });
+    });
   }
 
   // ---------- Beispiel ----------
@@ -549,31 +582,44 @@
 
   function willkommen() {
     var box = el("section", "willkommen");
-    box.appendChild(el("h1", null, "Willkommen bei der Interaktiven Wandtafel"));
-    box.appendChild(el("p", null, "Lege Fächer an, darin Kapitel oder Themen und darin deine Tafeln. Eine Tafel hat mehrere Seiten wie eine Präsentation. Darauf kommen Texte, Notizen, Bilder, Videos, Webseiten, Links, Timer, Zufallsgenerator, Gruppen und Würfel, und du kannst auf jeder Seite zeichnen."));
-    var schritte = el("ol", "schritte");
-    ["Fach anlegen, z. B. «Mathematik»", "Kapitel oder Thema anlegen, z. B. «Brüche»", "Tafel anlegen und mit Seiten füllen", "Präsentieren oder exportieren (HTML, PDF, Wandtafel-Datei)"].forEach(function (t) {
-      schritte.appendChild(el("li", null, t));
-    });
-    box.appendChild(schritte);
-    var knoepfe = el("div", "willkommen-knoepfe");
-    var neu = el("button", "knopf knopf-haupt", "Erstes Fach anlegen");
-    neu.type = "button";
-    neu.addEventListener("click", fachAnlegen);
-    var bsp = el("button", "knopf", "Beispiel laden");
-    bsp.type = "button";
-    bsp.id = "beispiel";
-    bsp.addEventListener("click", beispielAnlegen);
-    var imp = el("button", "knopf", "Datei importieren");
+    var kopf = el("div", "willkommen-kopf");
+    kopf.appendChild(el("p", "willkommen-marke", "Interaktive Wandtafel"));
+    kopf.appendChild(el("h1", null, "Unterricht, der sich bewegt"));
+    kopf.appendChild(el("p", "willkommen-lead", "Tafeln mit mehreren Seiten wie eine Präsentation, aber interaktiv: Texte, Bilder, Videos, Webseiten, Timer, Lostopf, Gruppen und Würfel. Darüber zeichnest du mit Stift und Marker."));
+    box.appendChild(kopf);
+
+    var wege = el("div", "willkommen-wege");
+    function weg(icon, titel, text, knopfText, klasse, aktion, id) {
+      var karte = el("article", "weg-karte");
+      var symbol = el("span", "weg-symbol");
+      symbol.innerHTML = W.icon(icon);
+      karte.appendChild(symbol);
+      karte.appendChild(el("h2", null, titel));
+      karte.appendChild(el("p", null, text));
+      var k = el("button", "knopf " + klasse, knopfText);
+      k.type = "button";
+      if (id) k.id = id;
+      k.addEventListener("click", aktion);
+      karte.appendChild(k);
+      wege.appendChild(karte);
+    }
+    weg("ordner", "Neu beginnen", "Fach anlegen, darin Kapitel oder Themen und darin deine Tafeln.", "Erstes Fach anlegen", "knopf-haupt", fachAnlegen);
+    weg("praesentieren", "Aus PowerPoint", "Eine .pptx-Datei hochladen: Jede Folie wird eine bearbeitbare Seite.", "PowerPoint hochladen", "knopf-akzent", function () {
+      importStarten();
+    }, "willkommen-pptx");
+    weg("seiten", "Ausprobieren", "Eine fertige Beispieltafel mit Timer, Lostopf und Gruppen ansehen.", "Beispiel laden", "", beispielAnlegen, "beispiel");
+    box.appendChild(wege);
+
+    var fuss = el("p", "hinweis-klein");
+    fuss.appendChild(document.createTextNode("Alles bleibt nur in diesem Browser auf diesem Gerät. Mit «Alles sichern» erstellst du eine Sicherungsdatei, die du auf einem anderen Gerät "));
+    var imp = el("button", "text-knopf", "importieren");
     imp.type = "button";
     imp.addEventListener("click", function () {
       importStarten();
     });
-    knoepfe.appendChild(neu);
-    knoepfe.appendChild(bsp);
-    knoepfe.appendChild(imp);
-    box.appendChild(knoepfe);
-    box.appendChild(el("p", "hinweis-klein", "Alles wird nur in diesem Browser auf diesem Gerät gespeichert. Mit «Alles sichern» erstellst du eine Sicherungsdatei, die du auf einem anderen Gerät importieren kannst."));
+    fuss.appendChild(imp);
+    fuss.appendChild(document.createTextNode(" kannst."));
+    box.appendChild(fuss);
     return box;
   }
 
@@ -631,7 +677,7 @@
           { text: "Umbenennen …", aktion: function () { kapitelUmbenennen(kapitel); } },
           k > 0 ? { text: "Nach oben", aktion: function () { kapitelVerschieben(fach, kapitel, -1); } } : null,
           k < fach.kapitel.length - 1 ? { text: "Nach unten", aktion: function () { kapitelVerschieben(fach, kapitel, 1); } } : null,
-          { text: "Tafel importieren …", aktion: function () { importStarten({ fachId: fach.id, kapitelId: kapitel.id }); } },
+          { text: "PowerPoint oder Tafel importieren …", aktion: function () { importStarten({ fachId: fach.id, kapitelId: kapitel.id }); } },
           { text: "Kapitel exportieren (Wandtafel-Datei)", aktion: function () { fachExport(fach, kapitel); } },
           { trenner: true },
           { text: "Kapitel löschen", gefahr: true, aktion: function () { kapitelLoeschen(fach, kapitel); } }
@@ -721,9 +767,15 @@
   }
 
   function starten() {
+    document.querySelectorAll("[data-icon]").forEach(function (k) {
+      k.insertAdjacentHTML("afterbegin", W.icon(k.dataset.icon));
+    });
     document.getElementById("fach-neu").addEventListener("click", fachAnlegen);
     document.getElementById("sichern").addEventListener("click", allesSichern);
     document.getElementById("importieren").addEventListener("click", function () {
+      importStarten();
+    });
+    document.getElementById("pptx-import").addEventListener("click", function () {
       importStarten();
     });
     document.getElementById("import-datei").addEventListener("change", function () {
@@ -742,7 +794,7 @@
     document.addEventListener("drop", function (ev) {
       ev.preventDefault();
       var d = ev.dataTransfer && ev.dataTransfer.files[0];
-      if (d && /\.(json|html?)$/i.test(d.name)) importDatei(d);
+      if (d && /\.(json|html?|pptx)$/i.test(d.name)) importDatei(d);
     });
     // Beim Zurueckkehren aus einer Tafel die Vorschau aktualisieren
     window.addEventListener("pageshow", function (ev) {

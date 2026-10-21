@@ -186,9 +186,11 @@
 
   // ---------- Import ----------
 
-  /** Liest eine Wandtafel-Datei (.json) oder eine exportierte HTML-Datei */
+  /** Liest eine Wandtafel-Datei (.json), eine exportierte HTML-Datei oder eine PowerPoint-Datei (.pptx) */
   function paketLesen(datei) {
+    if (W.PptxLesen && W.PptxLesen.istPptx(datei)) return W.PptxLesen.lesen(datei);
     return W.dateiLesen(datei, "text").then(function (text) {
+      if (/^PK/.test(text)) throw new Error("Diese Datei lässt sich nicht importieren. Möglich sind PowerPoint (.pptx), Wandtafel-Dateien (.json) und exportierte HTML-Dateien.");
       var json = text;
       if (/^\s*</.test(text)) {
         var m = text.match(/<script type="application\/json" id="wandtafel-daten">([\s\S]*?)<\/script>/);
@@ -247,7 +249,7 @@
           return tafelUebernehmen(paket.tafel).then(function (id) {
             kapitel.tafeln.push(id);
             return S.sammlungSpeichern(sammlung).then(function () {
-              return { text: "Tafel «" + paket.tafel.titel + "» importiert.", fachId: fach.id };
+              return { text: "Tafel «" + paket.tafel.titel + "» importiert.", fachId: fach.id, tafelId: id };
             });
           });
         }
