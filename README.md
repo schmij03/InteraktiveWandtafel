@@ -4,7 +4,7 @@ WebApp zum Anlegen von interaktiven Präsentationen («Tafeln») für den Unterr
 interaktiven Wandtafel von fobizz und aufgebaut wie die Tafel in
 [MI_Connected3](https://github.com/schmij03/MI_Connected3).
 
-- **Fächer** anlegen, darin **Kapitel oder Themen**, darin **Tafeln**
+- **Fächer** anlegen, darin freiwillig **Jahre** (z. B. 1., 2., 3. Sek), darin **Kapitel oder Themen**, darin **Tafeln**
 - Eine Tafel hat mehrere **Seiten** wie eine Präsentation
 - Auf jeder Seite: Text, Notiz, **Bild** (auch bemalen), **Video** (YouTube, Vimeo, Videodatei), **Webseite**
   (Adresse oder iFrame-Snippet), Link mit **QR-Code**, **Datei**; Module Timer, Stoppuhr, **Uhr**, **Ampel**,
@@ -52,8 +52,10 @@ Run workflow* starten. Die Seite ist dann unter `https://schmij03.github.io/Inte
 
 | Was | Wie |
 |---|---|
-| Fach anlegen | «+ Fach» links; Name und Farbe wählen |
-| Kapitel oder Thema anlegen | im Fach «+ Kapitel / Thema» |
+| Fach anlegen | «+ Fach» links; Name und Farbe wählen, auf Wunsch gleich 1., 2. und 3. Sek ankreuzen |
+| Jahr anlegen (freiwillig) | im Fach «+ Jahr», z. B. «2. Sek»; nicht jedes Fach braucht alle Jahre und Fächer ohne Jahre bleiben wie bisher |
+| Zwischen Jahren wechseln | Reiter unter dem Fach: «Alle» zeigt die Jahre untereinander; Menü «…» neben dem gewählten Jahr zum Umbenennen, Sortieren, Exportieren und Entfernen (Themen bleiben dabei erhalten) |
+| Kapitel oder Thema anlegen | im Fach «+ Kapitel / Thema»; das gewählte Jahr ist vorbelegt, später ändern mit «…» > «Jahr ändern» |
 | Tafel anlegen | im Kapitel «+ Tafel» |
 | Umbenennen, sortieren, duplizieren, verschieben, löschen | Menü «…» bei Fach, Kapitel oder Tafel |
 | Suchen | Suchfeld oben, sucht in Titeln, Texten und Adressen aller Tafeln |
@@ -106,9 +108,9 @@ Hochgeladene Videodateien bleiben im Browser; sehr grosse Videos füllen den Spe
 | HTML-Datei (offline) | Tafel > Exportieren, oder Menü «…» der Tafel | eine Datei mit allem (Schrift, Bilder, Videos); per Doppelklick präsentieren, ohne Internet und ohne diese Website (Webseiten und YouTube brauchen Internet) |
 | PDF | Tafel > Exportieren > PDF | öffnet den Druckdialog, dort «Als PDF speichern»; eine PDF-Seite pro Tafelseite, Webseiten und Videos als Platzhalter mit Adresse |
 | PowerPoint (`.pptx`) | Tafel > Exportieren > PowerPoint | eine Folie pro Seite (16:9) mit bearbeitbaren Texten, Formen und Tabellen, Bildern, Zeichnungen, Hintergrund, Notizen, Übergängen und ausgeblendeten Folien; Videos, Webseiten, Links und Dateien als Karte mit anklickbarer Adresse. Animationen und Module (Timer, Lostopf, …) sind nicht enthalten |
-| Wandtafel-Datei (`.wandtafel.json`) | Tafel, Kapitel oder Fach | zum Weitergeben an Kolleginnen und Kollegen oder auf ein anderes Gerät |
+| Wandtafel-Datei (`.wandtafel.json`) | Tafel, Kapitel, Jahr oder Fach | zum Weitergeben an Kolleginnen und Kollegen oder auf ein anderes Gerät |
 | Sicherung | «Alles sichern» oben | alle Fächer, Kapitel, Tafeln und Medien in einer Datei |
-| Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | PowerPoint-Dateien (`.pptx`), Wandtafel-Dateien und exportierte HTML-Dateien; Fächer und Kapitel mit gleichem Namen werden ergänzt |
+| Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | PowerPoint-Dateien (`.pptx`), Wandtafel-Dateien und exportierte HTML-Dateien; Fächer, Jahre und Kapitel mit gleichem Namen werden ergänzt |
 | Seiten hinzufügen | Tafel > Exportieren > «Seiten aus Datei oder PowerPoint hinzufügen», oder Datei auf die Tafel ziehen | hängt die Seiten einer anderen Tafel oder die Folien einer PowerPoint an |
 
 ### PowerPoint importieren
@@ -208,7 +210,8 @@ Farben wie in MI_Connected3 als Variablen oben in `site/css/basis.css`.
 ```
 
 Eine Sicherung (`"art": "sammlung"`) enthält statt `tafel` die Listen `faecher` (mit `kapitel` und deren
-Tafel-IDs) und `tafeln`. Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `datei`, `timer`,
+Tafel-IDs) und `tafeln`. Ein Fach kann Jahre haben (`"jahre": [{ "id": "j1", "name": "1. Sek" }]`); ein Kapitel
+gehört mit `"jahr": "j1"` zu einem davon, ohne `jahr` steht es unter «Ohne Jahr». Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `datei`, `timer`,
 `stoppuhr`, `uhr`, `ampel`, `sozialform`, `zufall` (Lostopf), `gruppen`, `wuerfel`, `form`, `tabelle`. Eine Seite mit eigenem Design hat
 `"hintergrund": "eigen"` und dazu `hgFarbe`, `hgMuster` (`kariert`, `liniert`, `punkte`) und `hgBild` (Medium-ID).
 

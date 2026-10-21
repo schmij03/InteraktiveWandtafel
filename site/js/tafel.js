@@ -2207,8 +2207,8 @@
       sammlung.faecher.forEach(function (f) {
         f.kapitel.forEach(function (k) {
           if (k.tafeln.indexOf(tafel.id) !== -1) {
-            ort.textContent = f.name + " › " + k.name;
-            ort.href = "index.html#fach=" + encodeURIComponent(f.id);
+            ort.textContent = W.ortText(f, k);
+            ort.href = "index.html#fach=" + encodeURIComponent(f.id) + (W.jahrVon(f, k) ? "&jahr=" + encodeURIComponent(k.jahr) : "");
             document.getElementById("zur-uebersicht").href = ort.href;
           }
         });

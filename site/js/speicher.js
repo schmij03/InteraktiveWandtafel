@@ -1,6 +1,8 @@
 /*
  * Speicher im Browser (IndexedDB). Drei Bereiche:
- *   sammlung  Faecher mit Kapiteln; jedes Kapitel listet die IDs seiner Tafeln
+ *   sammlung  Faecher mit Kapiteln; jedes Kapitel listet die IDs seiner Tafeln.
+ *             Optional hat ein Fach Jahre (jahre: [{ id, name }]) und ein Kapitel
+ *             verweist mit jahr: <id> auf eines davon.
  *   tafeln    eine Tafel pro Eintrag: Titel und Seiten mit Elementen und Zeichnungen
  *   medien    hochgeladene Bilder und Videos als Blob, in den Elementen per ID verknuepft
  *

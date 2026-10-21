@@ -132,6 +132,19 @@
     );
   }
 
+  /** Jahr eines Kapitels (Faecher koennen Jahre wie «1. Sek» haben, Kapitel verweisen per ID darauf) */
+  function jahrVon(fach, kapitel) {
+    return (kapitel.jahr && (fach.jahre || []).find(function (j) {
+      return j.id === kapitel.jahr;
+    })) || null;
+  }
+
+  /** «Fach › Jahr › Kapitel», ohne Jahr «Fach › Kapitel» */
+  function ortText(fach, kapitel) {
+    var jahr = jahrVon(fach, kapitel);
+    return fach.name + (jahr ? " › " + jahr.name : "") + " › " + kapitel.name;
+  }
+
   function normal(text) {
     return String(text || "")
       .toLowerCase()
@@ -390,6 +403,8 @@
   W.datumText = datumText;
   W.dateiText = dateiText;
   W.normal = normal;
+  W.jahrVon = jahrVon;
+  W.ortText = ortText;
   W.herunterladen = herunterladen;
   W.dateiLesen = dateiLesen;
   W.dataUrlZuBlob = dataUrlZuBlob;

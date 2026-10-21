@@ -270,12 +270,27 @@
             sammlung.faecher.push(fach);
           }
           erstesFach = erstesFach || fach;
+          // Jahre mit gleichem Namen zusammenlegen; alte ID -> ID in dieser Sammlung
+          var jahrNach = {};
+          (fNeu.jahre || []).forEach(function (jNeu) {
+            fach.jahre = fach.jahre || [];
+            var jahr = fach.jahre.find(function (j) {
+              return W.normal(j.name) === W.normal(jNeu.name);
+            });
+            if (!jahr) {
+              jahr = { id: W.neueId("j"), name: jNeu.name };
+              fach.jahre.push(jahr);
+            }
+            jahrNach[jNeu.id] = jahr.id;
+          });
           (fNeu.kapitel || []).forEach(function (kNeu) {
+            var jahrId = jahrNach[kNeu.jahr] || null;
             var kapitel = fach.kapitel.find(function (k) {
-              return W.normal(k.name) === W.normal(kNeu.name);
+              return W.normal(k.name) === W.normal(kNeu.name) && (k.jahr || null) === jahrId;
             });
             if (!kapitel) {
               kapitel = { id: W.neueId("k"), name: kNeu.name, tafeln: [] };
+              if (jahrId) kapitel.jahr = jahrId;
               fach.kapitel.push(kapitel);
             }
             (kNeu.tafeln || []).forEach(function (tid) {
