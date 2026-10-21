@@ -372,6 +372,189 @@ try {
   await foto(bsp, "10-handy");
   await neu.close();
 
+  // ---------- Funktionen wie bei fobizz ----------
+  {
+  console.log("Funktionen wie bei fobizz");
+  const fk = await browser.newContext({ viewport: { width: 1400, height: 860 }, acceptDownloads: true });
+  await fk.route(/^https?:\/\/(?!localhost)/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<p>extern</p>" }));
+  const fs2 = await fk.newPage();
+  fs2.on("pageerror", (e) => seitenFehler.push("fobizz: " + e.message));
+  fs2.on("dialog", (d) => d.accept());
+  const ed = (fn) => fs2.evaluate(fn);
+  async function dlg(werte, knopf) {
+    const d = fs2.locator("dialog[open]");
+    await d.waitFor();
+    for (const [name, wert] of Object.entries(werte)) {
+      const feld = d.locator(`[name="${name}"]`).first();
+      if ((await feld.getAttribute("type")) === "file") await feld.setInputFiles(wert);
+      else if ((await feld.evaluate((e) => e.tagName)) === "SELECT") await feld.selectOption(wert);
+      else await feld.fill(wert);
+    }
+    await d.locator(knopf ? `button:has-text("${knopf}")` : "button[type=submit]").click();
+    await d.waitFor({ state: "detached" });
+  }
+  async function modul(name) {
+    await fs2.click("#module-knopf");
+    await fs2.locator(".klappmenue button", { hasText: new RegExp("^" + name + "$") }).click();
+  }
+  const daten = (typ) => fs2.evaluate((t) => window.WandtafelEditor.tafel().seiten[window.WandtafelEditor.seite() - 1].elemente.filter((e) => e.typ === t).pop().daten, typ);
+
+  await fs2.goto(BASIS);
+  await fs2.click("#beispiel");
+  await fs2.waitForSelector(".tafel-karte");
+  await fs2.locator(".tafel-karte a.knopf-haupt").first().click();
+  await fs2.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+  const seitenVorher = await ed(() => window.WandtafelEditor.tafel().seiten.length);
+  await fs2.click("#seite-neu");
+  await fs2.waitForFunction((n) => window.WandtafelEditor.tafel().seiten.length === n + 1, seitenVorher);
+
+  await modul("Uhr");
+  await fs2.waitForSelector(".element-uhr svg.uhr-blatt");
+  pruefe(/^\d\d:\d\d$/.test(await fs2.locator(".uhr-digital").textContent()), "Uhr zeigt die aktuelle Zeit");
+
+  await modul("Ampel");
+  await fs2.click(".element-ampel .ampel-gruen");
+  pruefe((await daten("ampel")).licht === "gruen" && (await fs2.locator(".ampel-gruen.an").count()) === 1, "Ampel auf Grün geschaltet");
+
+  await modul("Sozialform");
+  await fs2.click('.element-sozialform button[data-form="gruppe"]');
+  pruefe((await daten("sozialform")).form === "gruppe" && (await fs2.locator(".sozialform-aktuell strong").textContent()) === "Gruppenarbeit", "Sozialform auf Gruppenarbeit");
+
+  await modul("Lostopf");
+  await fs2.locator(".element-zufall textarea").fill("Anna\nBen");
+  await fs2.locator(".element-zufall button", { hasText: "Lose in den Topf geben" }).click();
+  for (let i = 0; i < 2; i++) {
+    await fs2.locator(".element-zufall button", { hasText: "Los ziehen" }).click();
+    await fs2.waitForTimeout(1000);
+  }
+  await fs2.locator(".element-zufall button", { hasText: "Los ziehen" }).click();
+  pruefe((await fs2.locator(".zufall-name").textContent()) === "Der Topf ist leer!", "Lostopf: nach zwei Losen ist der Topf leer");
+  await fs2.locator(".element-zufall button", { hasText: "Alle zurück in den Topf" }).click();
+  pruefe((await daten("zufall")).gezogen.length === 0, "Lostopf: alle Lose zurück im Topf");
+
+  await modul("Gruppen");
+  await fs2.locator(".element-gruppen textarea").fill("A\nB\nC\nD\nE\nF\nG");
+  await fs2.locator(".element-gruppen select").selectOption("anzahl");
+  await fs2.locator(".element-gruppen input[type=number]").fill("3");
+  await fs2.locator(".element-gruppen button", { hasText: "Gruppen bilden" }).click();
+  pruefe((await fs2.locator(".element-gruppen .gruppe").count()) === 3, "Gruppen nach Anzahl: 3 Gruppen");
+
+  await modul("Würfel");
+  await fs2.locator(".element-wuerfel select").selectOption("5");
+  pruefe((await fs2.locator(".element-wuerfel .wuerfel").count()) === 5, "Fünf Würfel");
+
+  await modul("Timer");
+  const timer = fs2.locator(".element-timer").last();
+  await timer.locator("button", { hasText: "10 min" }).click();
+  pruefe((await timer.locator(".gross-zahl").textContent()) === "10:00", "Timer-Vorgabe 10 Minuten");
+  await timer.locator("button", { hasText: "Andere Zeit" }).click();
+  await timer.locator('input[aria-label="Minuten"]').fill("1");
+  await timer.locator('input[aria-label="Sekunden"]').fill("30");
+  await timer.locator("button", { hasText: "OK" }).click();
+  pruefe((await timer.locator(".gross-zahl").textContent()) === "01:30", "Timer mit eigener Zeit 1:30");
+
+  await fs2.click('[data-neu="link"]');
+  await dlg({ url: "https://example.org/aufgabe", qr: "ja" }, "Einfügen");
+  pruefe((await fs2.locator(".element-link .qr-bild svg path").count()) === 1, "Link mit QR-Code");
+
+  await fs2.click('[data-neu="webseite"]');
+  await dlg({ url: '<iframe src="https://learningapps.org/watch?v=abc123" width="100%"></iframe>' }, "Einfügen");
+  pruefe((await fs2.locator(".element-webseite iframe").last().getAttribute("src")) === "https://learningapps.org/watch?v=abc123", "iFrame-Snippet eingebettet");
+
+  await fs2.click('[data-neu="datei"]');
+  await dlg({ datei: { name: "arbeitsblatt.txt", mimeType: "text/plain", buffer: Buffer.from("Aufgabe 1") } }, "Hochladen");
+  await fs2.waitForSelector(".element-datei a[download][href^='blob:']");
+  pruefe((await fs2.locator(".element-datei .datei-info strong").textContent()) === "arbeitsblatt.txt", "Datei hochgeladen mit Download");
+
+  // Spotlight und Verschieben ueber das Menue «…»
+  const uhr = fs2.locator(".element-uhr");
+  await uhr.hover();
+  await uhr.locator('[title="Weitere Aktionen"]').click();
+  await fs2.locator(".klappmenue button", { hasText: "Im Spotlight zeigen" }).click();
+  pruefe((await fs2.locator(".element.im-spotlight").count()) === 1, "Spotlight geöffnet");
+  await fs2.keyboard.press("Escape");
+  pruefe((await fs2.locator(".element.im-spotlight").count()) === 0, "Spotlight mit Esc geschlossen");
+
+  const vorherAnzahl = await ed(() => window.WandtafelEditor.tafel().seiten[0].elemente.length);
+  await uhr.hover();
+  await uhr.locator('[title="Weitere Aktionen"]').click();
+  await fs2.locator(".klappmenue button", { hasText: "Auf andere Seite verschieben" }).click();
+  await fs2.locator(".klappmenue button", { hasText: "Seite 1:" }).click();
+  pruefe((await ed(() => window.WandtafelEditor.tafel().seiten[0].elemente.length)) === vorherAnzahl + 1 && (await fs2.locator(".element-uhr").count()) === 0, "Uhr auf Seite 1 verschoben");
+
+  // Eigenes Design
+  await fs2.selectOption("#hintergrund", "eigen");
+  await dlg({ farbe: "#203040", muster: "kariert", bild: { name: "hg.png", mimeType: "image/png", buffer: PNG } }, "Übernehmen");
+  await fs2.waitForFunction(() => /url\(/.test(document.getElementById("tafel").style.backgroundImage));
+  const design = await ed(() => {
+    const s = window.WandtafelEditor.tafel().seiten[window.WandtafelEditor.seite() - 1];
+    return { hg: s.hintergrund, farbe: s.hgFarbe, muster: s.hgMuster, bild: !!s.hgBild, css: document.getElementById("tafel").style.backgroundImage };
+  });
+  pruefe(design.hg === "eigen" && design.farbe === "#203040" && design.muster === "kariert" && design.bild && /linear-gradient/.test(design.css), "Eigenes Design: Farbe, Muster und Hintergrundbild");
+
+  // Bild bemalen
+  await fs2.click('[data-neu="bild"]');
+  await dlg({ datei: { name: "punkt.png", mimeType: "image/png", buffer: PNG } }, "Einfügen");
+  await fs2.waitForSelector(".element-bild img[src^='blob:']");
+  const altesMedium = (await daten("bild")).medium;
+  const bild = fs2.locator(".element-bild").last();
+  await bild.hover();
+  await bild.locator('[title="Weitere Aktionen"]').click();
+  await fs2.locator(".klappmenue button", { hasText: "Bild bemalen" }).click();
+  const leinwand = fs2.locator("dialog.maler canvas");
+  await leinwand.waitFor();
+  const lw = await leinwand.boundingBox();
+  await fs2.mouse.move(lw.x + lw.width * 0.2, lw.y + lw.height * 0.2);
+  await fs2.mouse.down();
+  await fs2.mouse.move(lw.x + lw.width * 0.8, lw.y + lw.height * 0.8, { steps: 5 });
+  await fs2.mouse.up();
+  await fs2.locator("dialog.maler button", { hasText: "Speichern" }).click();
+  await fs2.waitForFunction((alt) => {
+    const s = window.WandtafelEditor.tafel().seiten[window.WandtafelEditor.seite() - 1];
+    const b = s.elemente.filter((e) => e.typ === "bild").pop();
+    return b.daten.medium && b.daten.medium !== alt;
+  }, altesMedium);
+  pruefe(true, "Bild bemalt und als neues Bild gespeichert");
+  await fs2.locator("#tafel").click({ position: { x: 5, y: 5 } });
+  await fs2.locator(".element-timer").last().hover();
+  await foto(fs2, "10b-fobizz-bearbeiten");
+
+  pruefe((await fs2.locator("#farben .farbknopf").count()) === 9, "Neun Zeichenfarben");
+
+  // Export enthaelt Hintergrundbild und Datei; Offline-Ansicht zeigt die neuen Karten
+  const paket = await ed(() => window.Wandtafel.Export.tafelPaket(window.WandtafelEditor.tafel()));
+  const nr = await ed(() => window.WandtafelEditor.seite());
+  const letzte = paket.tafel.seiten[nr - 1];
+  const datei = letzte.elemente.find((e) => e.typ === "datei");
+  pruefe(!!paket.medien[letzte.hgBild] && !!paket.medien[datei.daten.medium], "Export enthält Hintergrundbild und Datei");
+  await ed(() => window.WandtafelEditor.speichern());
+  const [dl] = await Promise.all([fs2.waitForEvent("download"), (async () => {
+    await fs2.click("#export-knopf");
+    await fs2.locator(".klappmenue button", { hasText: "HTML-Datei" }).click();
+  })()]);
+  const offlinePfad = path.join(TEMP, "fobizz.html");
+  await dl.saveAs(offlinePfad);
+  const off = await fk.newPage();
+  off.on("pageerror", (e) => seitenFehler.push("fobizz offline: " + e.message));
+  await off.goto("file://" + offlinePfad + "#" + nr);
+  await off.waitForSelector(".element-datei");
+  pruefe((await off.locator(".element-ampel, .element-sozialform, .element-link .qr-bild").count()) === 3, "Offline-Ansicht zeigt Ampel, Sozialform und QR-Code");
+  pruefe(/url\(/.test(await off.locator(".tafel").first().evaluate((e) => e.style.backgroundImage)), "Offline-Ansicht mit Hintergrundbild");
+  await foto(off, "11-fobizz-offline");
+
+  // Spotlight beim Praesentieren
+  await fs2.click("#praesentieren");
+  await fs2.waitForFunction(() => document.body.classList.contains("praesentieren"));
+  const ampel = fs2.locator(".element-ampel");
+  await ampel.hover();
+  await ampel.locator(".spot-knopf").click();
+  pruefe((await fs2.locator(".element-ampel.im-spotlight").count()) === 1, "Spotlight beim Präsentieren");
+  await foto(fs2, "12-spotlight");
+  await fs2.keyboard.press("Escape");
+  pruefe((await fs2.locator(".im-spotlight").count()) === 0 && (await fs2.evaluate(() => document.body.classList.contains("praesentieren"))), "Esc schliesst zuerst das Spotlight");
+  await fk.close();
+  }
+
   pruefe(seitenFehler.length === 0, "Keine JavaScript-Fehler" + (seitenFehler.length ? ": " + seitenFehler.join(" | ") : ""));
 } catch (e) {
   console.error(e);

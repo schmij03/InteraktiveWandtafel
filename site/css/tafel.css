@@ -617,7 +617,10 @@ body[data-modus="bearbeiten"] .nur-zeichnen {
 .element-stoppuhr .koerper,
 .element-zufall .koerper,
 .element-gruppen .koerper,
-.element-wuerfel .koerper {
+.element-wuerfel .koerper,
+.element-uhr .koerper,
+.element-ampel .koerper,
+.element-sozialform .koerper {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -787,6 +790,315 @@ body[data-modus="bearbeiten"] .nur-zeichnen {
 }
 .rollt .wuerfel {
   transform: rotate(-8deg);
+}
+.wuerfel-flaeche.viele {
+  flex-wrap: wrap;
+  gap: 3%;
+}
+.viele .wuerfel {
+  width: min(36cqh, 14cqw, 150px);
+  height: min(36cqh, 14cqw, 150px);
+  padding: 8px;
+}
+
+/* Timer: Vorgaben und eigene Zeit */
+.timer-vorgaben .w-knopf {
+  min-height: 40px;
+  padding: 4px 12px;
+  font-size: 18px;
+}
+.timer-eigen {
+  align-items: center;
+  font-size: 20px;
+}
+.timer-eigen input {
+  width: 80px;
+  min-height: 44px;
+  padding: 2px 6px;
+  border: 1px solid var(--grau);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 24px;
+}
+.timer-eigen[hidden] {
+  display: none;
+}
+
+/* Uhr */
+.uhr-blatt {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+.uhr-rand {
+  fill: var(--weiss);
+  stroke: var(--dunkelblau);
+  stroke-width: 4;
+}
+.uhr-strich,
+.uhr-strich-lang {
+  stroke: var(--dunkelblau);
+  stroke-width: 1.5;
+}
+.uhr-strich-lang {
+  stroke-width: 4;
+}
+.uhr-stunde,
+.uhr-minute {
+  stroke: var(--dunkelblau);
+  stroke-linecap: round;
+  stroke-width: 7;
+}
+.uhr-minute {
+  stroke-width: 4.5;
+}
+.uhr-sekunde {
+  stroke: var(--orange);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.uhr-mitte {
+  fill: var(--orange);
+}
+.uhr-digital {
+  text-align: center;
+  font-size: min(14cqh, 12cqw);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dunkelblau);
+  line-height: 1;
+}
+
+/* Ampel */
+.ampel {
+  flex: 1;
+  min-height: 0;
+  align-self: center;
+  aspect-ratio: 1 / 2.6;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6%;
+  border-radius: 24px;
+  background: #2b2f36;
+}
+.ampel-licht {
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  opacity: 0.25;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+.ampel-rot {
+  background: #dc3545;
+}
+.ampel-gelb {
+  background: #fdc72e;
+}
+.ampel-gruen {
+  background: #3fae49;
+}
+.ampel-licht.an {
+  opacity: 1;
+  box-shadow: 0 0 28px 6px currentColor;
+}
+.ampel-rot.an {
+  color: rgba(220, 53, 69, 0.75);
+}
+.ampel-gelb.an {
+  color: rgba(253, 199, 46, 0.75);
+}
+.ampel-gruen.an {
+  color: rgba(63, 174, 73, 0.75);
+}
+
+/* Sozialform */
+.sozialform-aktuell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--petrol);
+}
+.sozialform-icon {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+.sozialform-aktuell strong {
+  font-size: min(13cqh, 10cqw);
+  color: var(--dunkelblau);
+}
+.sozialform-wahl {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.sozialform-knopf {
+  width: 64px;
+  height: 56px;
+  padding: 8px;
+  border: 1px solid var(--grau);
+  border-radius: 8px;
+  background: var(--weiss);
+  color: var(--petrol);
+  cursor: pointer;
+}
+.sozialform-knopf svg {
+  width: 100%;
+  height: 100%;
+}
+.sozialform-knopf.aktiv {
+  background: var(--petrol);
+  border-color: var(--petrol);
+  color: var(--weiss);
+}
+
+/* Datei */
+.datei-karte {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.datei-vorschau {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background: var(--hellgrau);
+  overflow: hidden;
+}
+.datei-vorschau img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.datei-vorschau iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--weiss);
+}
+.datei-gross {
+  font-size: 64px;
+  font-weight: 700;
+  color: var(--petrol);
+}
+.datei-unten {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.datei-symbol {
+  flex: none;
+  min-width: 48px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--petrol);
+  color: var(--weiss);
+  font-size: 15px;
+  font-weight: 700;
+}
+.datei-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 20px;
+}
+.datei-info strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.datei-info small {
+  font-size: 16px;
+  color: var(--text-leise);
+}
+.datei-unten .w-knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 18px;
+  text-decoration: none;
+  color: var(--dunkelblau);
+}
+
+/* Link mit QR-Code */
+.link-karte.mit-qr {
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  font-size: 24px;
+}
+.qr-bild {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+.qr-bild svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Spotlight: ein Element gross ueber der Seite */
+.spot-knopf {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  padding: 7px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(33, 41, 92, 0.75);
+  color: var(--weiss);
+  cursor: pointer;
+  display: none;
+}
+.spot-knopf svg {
+  width: 100%;
+  height: 100%;
+}
+/* Beim Praesentieren und in der exportierten Ansicht bei Mausberuehrung zeigen */
+body.praesentieren .element:hover .spot-knopf,
+.ansicht-seite .element:hover .spot-knopf,
+.element.im-spotlight .spot-knopf {
+  display: block;
+}
+.tafel-vorschau .spot-knopf {
+  display: none !important;
+}
+.ebene-elemente.hat-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(15, 20, 40, 0.6);
+}
+.element.im-spotlight {
+  left: 40px !important;
+  top: 40px !important;
+  width: 1520px !important;
+  height: 820px !important;
+  z-index: 99999 !important;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.45);
+}
+.element.im-spotlight .ziehpunkt {
+  display: none;
 }
 
 @media (max-width: 900px) {

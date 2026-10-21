@@ -31,9 +31,10 @@
       <button type="button" class="t-knopf" data-neu="notiz" data-icon="notiz" title="Notizzettel">Notiz</button>
       <button type="button" class="t-knopf" data-neu="bild" data-icon="bild" title="Bild hochladen oder Adresse (auch Ctrl+V oder Hineinziehen)">Bild</button>
       <button type="button" class="t-knopf" data-neu="video" data-icon="video" title="Video: YouTube, Vimeo, Videodatei">Video</button>
-      <button type="button" class="t-knopf" data-neu="webseite" data-icon="webseite" title="Webseite einbinden">Webseite</button>
-      <button type="button" class="t-knopf" data-neu="link" data-icon="link" title="Link als Karte">Link</button>
-      <button type="button" class="t-knopf" id="module-knopf" data-icon="timer" aria-haspopup="true" aria-expanded="false" title="Timer, Stoppuhr, Zufall, Gruppen, Würfel">Module</button>
+      <button type="button" class="t-knopf" data-neu="webseite" data-icon="webseite" title="Webseite oder iFrame-Snippet einbetten">Webseite</button>
+      <button type="button" class="t-knopf" data-neu="link" data-icon="link" title="Link als Karte, auf Wunsch mit QR-Code">Link</button>
+      <button type="button" class="t-knopf" data-neu="datei" data-icon="datei" title="Datei hochladen (PDF, Arbeitsblatt, Audio, …)">Datei</button>
+      <button type="button" class="t-knopf" id="module-knopf" data-icon="timer" aria-haspopup="true" aria-expanded="false" title="Timer, Stoppuhr, Uhr, Ampel, Sozialform, Lostopf, Gruppen, Würfel">Module</button>
     </div>
 
     <div class="leiste-gruppe nur-zeichnen" role="group" aria-label="Zeichenwerkzeuge">
@@ -48,6 +49,7 @@
     <div class="leiste-gruppe leiste-rechts">
       <label class="unsichtbar" for="hintergrund">Hintergrund</label>
       <select id="hintergrund" title="Hintergrund dieser Seite"></select>
+      <button type="button" class="t-knopf nur-icon" id="design-knopf" data-icon="design" title="Design der Seite: Farbe, Muster, Hintergrundbild" aria-label="Design der Seite"></button>
       <button type="button" class="t-knopf nur-icon" id="rueckgaengig" data-icon="zurueck" title="Rückgängig (Ctrl+Z)" aria-label="Rückgängig"></button>
       <button type="button" class="t-knopf nur-icon" id="wiederholen" data-icon="vor" title="Wiederholen (Ctrl+Y)" aria-label="Wiederholen"></button>
       <button type="button" class="t-knopf aktiv" id="seiten-knopf" data-icon="seiten" title="Seitenliste ein- und ausblenden">Seiten</button>
@@ -84,6 +86,7 @@
   <input type="file" id="import-datei" accept=".json,.html,application/json,text/html" hidden>
   <script src="js/gemeinsam.js"></script>
   <script src="js/speicher.js"></script>
+  <script src="js/qrcode.js"></script>
   <script src="js/elemente.js"></script>
   <script src="js/export.js"></script>
   <script src="js/tafel.js"></script>

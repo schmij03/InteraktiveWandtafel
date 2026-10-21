@@ -48,6 +48,13 @@
     ordner: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     mehr: '<circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/>',
     neuertab: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4"/>',
+    uhr: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    ampel: '<rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/>',
+    sozialform: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-3.5 2.6-6 6-6 1.5 0 2.9.5 4 1.4 1.1-.9 2.5-1.4 4-1.4 3.4 0 6 2.5 6 6"/>',
+    verschieben: '<rect x="3" y="5" width="11" height="14" rx="1.5"/><path d="M14 12h7M18 9l3 3-3 3"/>',
+    pinsel: '<path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 20l2-2"/>',
+    design: '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>',
     neuladen: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'
   };
 
@@ -182,7 +189,7 @@
 
   /**
    * Zeigt einen Dialog mit Eingabefeldern und liefert die Werte (oder null bei Abbrechen).
-   * felder: [{ name, label, typ: text|url|textarea|select|file|farbe|hinweis, wert, optionen, accept, platzhalter }]
+   * felder: [{ name, label, typ: text|url|textarea|select|file|farbe|farbwert|zahl|hinweis, wert, optionen, accept, platzhalter }]
    */
   function dialog(angaben) {
     return new Promise(function (ok) {
@@ -230,7 +237,7 @@
         } else {
           eingabe = el("input");
           // Adressen ohne «https://» zulassen (wird beim Einfuegen ergaenzt)
-          eingabe.type = f.typ === "file" ? "file" : "text";
+          eingabe.type = f.typ === "file" ? "file" : f.typ === "farbwert" ? "color" : f.typ === "zahl" ? "number" : "text";
           if (f.typ === "url") {
             eingabe.inputMode = "url";
             eingabe.autocomplete = "url";

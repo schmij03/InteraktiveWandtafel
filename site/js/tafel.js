@@ -23,9 +23,11 @@
   var HOEHE = E.HOEHE;
   var MAX_VERLAUF = 60;
 
-  var FARBEN = ["#1f2933", "#065a82", "#e4572e", "#2e7d32", "#f2c94c", "#ffffff"];
+  // Zeichenfarben wie bei fobizz (dazu Schwarz und Dunkelblau fuer weisse Seiten)
+  var FARBEN = ["#1f2933", "#065a82", "#dc3545", "#b3177b", "#fde725", "#69b645", "#22b5b7", "#4338ca", "#ffffff"];
+  var FARBNAMEN = ["Schwarz", "Dunkelblau", "Rot", "Magenta", "Gelb", "Grün", "Cyan", "Indigo", "Weiss"];
   var DICKEN = [3, 6, 12];
-  var MODULE = ["timer", "stoppuhr", "zufall", "gruppen", "wuerfel"];
+  var MODULE = ["timer", "stoppuhr", "uhr", "ampel", "sozialform", "zufall", "gruppen", "wuerfel"];
 
   var parameter = new URLSearchParams(window.location.search);
   var tafelId = parameter.get("t");
@@ -248,22 +250,26 @@
     var knoten = teile.knoten;
     var werkzeuge = teile.werkzeuge;
 
-    var hinten = W.knopf("g-knopf", "runter", "Nach hinten");
-    hinten.addEventListener("click", function () {
-      nachHinten(e, knoten);
-    });
-    var kopie = W.knopf("g-knopf", "kopie", "Duplizieren");
-    kopie.addEventListener("click", function () {
-      var daten = JSON.parse(JSON.stringify(e.daten));
-      hinzufuegen(e.typ, daten, { x: e.x + 30, y: e.y + 30, b: e.b, h: e.h });
+    // Seltenere Aktionen im Menue, damit die Kopfleiste zum Anfassen frei bleibt
+    var mehr = W.knopf("g-knopf", "mehr", "Weitere Aktionen");
+    mehr.setAttribute("aria-haspopup", "true");
+    mehr.addEventListener("click", function () {
+      W.menue(mehr, [
+        { text: "Im Spotlight zeigen", aktion: function () { E.spotlight(knoten, true); } },
+        e.typ === "bild" ? { text: "Bild bemalen …", aktion: function () { bildBemalen(e); } } : null,
+        { text: "Duplizieren", aktion: function () { duplizieren(e); } },
+        { text: "Auf andere Seite verschieben …", aktion: function () { elementVerschieben(e, mehr); } },
+        { text: "Nach hinten legen", aktion: function () { nachHinten(e, knoten); } },
+        { trenner: true },
+        { text: "Löschen", gefahr: true, aktion: function () { entfernen(e.id); } }
+      ]);
     });
     var weg = W.knopf("g-knopf", "muell", "Löschen (Entf)");
     weg.addEventListener("click", function () {
       entfernen(e.id);
     });
     if (werkzeuge) {
-      werkzeuge.appendChild(hinten);
-      werkzeuge.appendChild(kopie);
+      werkzeuge.appendChild(mehr);
       werkzeuge.appendChild(weg);
     }
 
@@ -295,6 +301,192 @@
     // Bilder lassen sich auch am Inhalt verschieben
     if (e.typ === "bild") verschiebbar(teile.koerper, knoten, e);
     return knoten;
+  }
+
+  function duplizieren(e) {
+    var daten = JSON.parse(JSON.stringify(e.daten));
+    hinzufuegen(e.typ, daten, { x: e.x + 30, y: e.y + 30, b: e.b, h: e.h });
+  }
+
+  /** Element auf eine andere Seite verschieben (wie «Seite …» bei fobizz) */
+  function elementVerschieben(e, anker) {
+    var punkte = tafel.seiten.map(function (s, i) {
+      if (i === seiteNr) return null;
+      return {
+        text: "Seite " + (i + 1) + ": " + E.seitenTitel(s, i + 1),
+        aktion: function () {
+          seite().elemente = seite().elemente.filter(function (x) {
+            return x.id !== e.id;
+          });
+          E.stoppen(e.id);
+          e.z = tafel.seiten[i].elemente.reduce(function (m, x) {
+            return Math.max(m, x.z || 0);
+          }, 0) + 1;
+          tafel.seiten[i].elemente.push(e);
+          var k = knotenVon(e.id);
+          if (k) k.remove();
+          gewaehlt = null;
+          festhalten();
+          W.melden("Auf Seite " + (i + 1) + " verschoben.");
+        }
+      };
+    }).filter(Boolean);
+    if (!punkte.length) {
+      W.melden("Die Tafel hat nur eine Seite. Zuerst eine Seite hinzufügen.");
+      return;
+    }
+    W.menue(anker, punkte);
+  }
+
+  // ---------- Bild bemalen ----------
+
+  /** Einfacher Bildeditor: auf ein Bild zeichnen und als neues Bild speichern */
+  function bildBemalen(e) {
+    var d = el("dialog", "dialog maler");
+    var kopf = el("h2", null, "Bild bemalen");
+    var leiste = el("div", "maler-leiste");
+    var farbWahl = el("input");
+    farbWahl.type = "color";
+    farbWahl.value = "#c82d2d";
+    farbWahl.setAttribute("aria-label", "Farbe");
+    var dickeWahl = el("input");
+    dickeWahl.type = "range";
+    dickeWahl.min = "1";
+    dickeWahl.max = "40";
+    dickeWahl.value = "6";
+    dickeWahl.setAttribute("aria-label", "Dicke");
+    var zurueck = W.knopf("knopf", "zurueck", "Rückgängig");
+    var vor = W.knopf("knopf", "vor", "Wiederholen");
+    var neu = el("button", "knopf", "Zurücksetzen");
+    neu.type = "button";
+    [el("span", null, "Stift"), farbWahl, dickeWahl, zurueck, vor, neu].forEach(function (x) {
+      leiste.appendChild(x);
+    });
+    var flaeche = el("div", "maler-flaeche");
+    var c = el("canvas");
+    flaeche.appendChild(c);
+    var knoepfe = el("div", "dialog-knoepfe");
+    var abbrechen = el("button", "knopf", "Abbrechen");
+    abbrechen.type = "button";
+    var sichern = el("button", "knopf knopf-haupt", "Speichern");
+    sichern.type = "button";
+    knoepfe.appendChild(abbrechen);
+    knoepfe.appendChild(sichern);
+    [kopf, leiste, flaeche, knoepfe].forEach(function (x) {
+      d.appendChild(x);
+    });
+    document.body.appendChild(d);
+
+    var ctx = c.getContext("2d");
+    var bild = new Image();
+    var striche = [];
+    var weg = [];
+    var aktuell = null;
+    function zeichnen() {
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(bild, 0, 0, c.width, c.height);
+      striche.concat(aktuell ? [aktuell] : []).forEach(function (st) {
+        ctx.save();
+        ctx.strokeStyle = st.farbe;
+        ctx.lineWidth = st.dicke;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        st.punkte.forEach(function (p, i) {
+          if (i === 0) ctx.moveTo(p[0], p[1]);
+          else ctx.lineTo(p[0], p[1]);
+        });
+        if (st.punkte.length === 1) ctx.lineTo(st.punkte[0][0] + 0.1, st.punkte[0][1]);
+        ctx.stroke();
+        ctx.restore();
+      });
+      zurueck.disabled = !striche.length;
+      vor.disabled = !weg.length;
+    }
+    function punkt(ev) {
+      var r = c.getBoundingClientRect();
+      return [((ev.clientX - r.left) * c.width) / r.width, ((ev.clientY - r.top) * c.height) / r.height];
+    }
+    c.addEventListener("pointerdown", function (ev) {
+      c.setPointerCapture(ev.pointerId);
+      var faktor = c.width / c.getBoundingClientRect().width;
+      aktuell = { farbe: farbWahl.value, dicke: dickeWahl.value * faktor, punkte: [punkt(ev)] };
+      zeichnen();
+    });
+    c.addEventListener("pointermove", function (ev) {
+      if (!aktuell) return;
+      aktuell.punkte.push(punkt(ev));
+      zeichnen();
+    });
+    function ende() {
+      if (!aktuell) return;
+      striche.push(aktuell);
+      weg = [];
+      aktuell = null;
+      zeichnen();
+    }
+    c.addEventListener("pointerup", ende);
+    c.addEventListener("pointercancel", ende);
+    zurueck.addEventListener("click", function () {
+      if (striche.length) weg.push(striche.pop());
+      zeichnen();
+    });
+    vor.addEventListener("click", function () {
+      if (weg.length) striche.push(weg.pop());
+      zeichnen();
+    });
+    neu.addEventListener("click", function () {
+      striche = [];
+      weg = [];
+      zeichnen();
+    });
+    function schliessen() {
+      d.close();
+      d.remove();
+    }
+    abbrechen.addEventListener("click", schliessen);
+    d.addEventListener("cancel", function (ev) {
+      ev.preventDefault();
+      schliessen();
+    });
+    sichern.addEventListener("click", function () {
+      try {
+        c.toBlob(function (blob) {
+          if (!blob) return;
+          S.mediumSpeichern(blob, (e.daten.name || "Bild").replace(/\.[^.]+$/, "") + "-bemalt.png").then(function (id) {
+            e.daten.medium = id;
+            delete e.daten.src;
+            schliessen();
+            seiteZeigen();
+            festhalten();
+          }, fehlerMelden);
+        }, "image/png");
+      } catch (f) {
+        W.melden("Dieses Bild stammt von einer anderen Webseite und kann nicht bemalt werden. Bild herunterladen und hochladen, dann geht es.", 8000);
+      }
+    });
+
+    bild.onload = function () {
+      // Grosse Bilder verkleinern, kleine vergroessern, damit man darauf zeichnen kann
+      var lang = Math.max(bild.naturalWidth, bild.naturalHeight) || 1;
+      var f = Math.min(2000, Math.max(800, lang)) / lang;
+      c.width = Math.round(bild.naturalWidth * f) || 800;
+      c.height = Math.round(bild.naturalHeight * f) || 600;
+      zeichnen();
+      d.showModal();
+    };
+    bild.onerror = function () {
+      schliessen();
+      W.melden("Das Bild konnte nicht geladen werden.");
+    };
+    if (e.daten.medium) {
+      S.mediumUrl(e.daten.medium).then(function (url) {
+        bild.src = url;
+      });
+    } else {
+      bild.crossOrigin = "anonymous";
+      bild.src = e.daten.src;
+    }
   }
 
   function verschiebbar(anfasser, knoten, e) {
@@ -418,6 +610,7 @@
   function seiteZeigen() {
     E.alleStoppen();
     ebene.innerHTML = "";
+    ebene.classList.remove("hat-spotlight");
     seite()
       .elemente.slice()
       .forEach(function (e) {
@@ -425,7 +618,7 @@
       });
     if (gewaehlt && !finden(gewaehlt)) gewaehlt = null;
     waehlen(gewaehlt);
-    hintergrundSetzen(seite().hintergrund || "weiss");
+    hintergrundSetzen();
     zeichnungNeu();
     seitenListeBauen();
     praesAnzeige();
@@ -456,6 +649,9 @@
       if (neu.titel) neu.titel += " (Kopie)";
     } else {
       neu.hintergrund = seite().hintergrund;
+      ["hgFarbe", "hgMuster", "hgBild"].forEach(function (k) {
+        if (seite()[k]) neu[k] = seite()[k];
+      });
     }
     var ziel = (kopieVon != null ? kopieVon : seiteNr) + 1;
     tafel.seiten.splice(ziel, 0, neu);
@@ -541,9 +737,68 @@
 
   // ---------- Darstellung ----------
 
-  function hintergrundSetzen(name) {
-    tafelEl.className = tafelEl.className.replace(/\bhg-\S+/g, "").trim() + " hg-" + name;
-    document.getElementById("hintergrund").value = name;
+  function hintergrundSetzen() {
+    E.hintergrundAnwenden(tafelEl, seite(), S.mediumUrl);
+    document.getElementById("hintergrund").value = seite().hintergrund || "weiss";
+  }
+
+  /** Eigenes Seitendesign: Farbe, Muster und Hintergrundbild (wie das Design bei fobizz) */
+  function designBearbeiten() {
+    var s = seite();
+    var felder = [
+      { name: "farbe", label: "Hintergrundfarbe", typ: "farbwert", wert: s.hgFarbe || "#ffffff" },
+      {
+        name: "muster",
+        label: "Muster",
+        typ: "select",
+        wert: s.hgMuster || "",
+        optionen: [
+          { wert: "", text: "Kein Muster" },
+          { wert: "kariert", text: "Kariert" },
+          { wert: "liniert", text: "Liniert" },
+          { wert: "punkte", text: "Punkte" }
+        ]
+      },
+      { name: "bild", label: s.hgBild ? "Hintergrundbild ersetzen" : "Hintergrundbild (freiwillig)", typ: "file", accept: "image/*" }
+    ];
+    if (s.hgBild) {
+      felder.push({
+        name: "bildWeg",
+        label: "Bisheriges Hintergrundbild",
+        typ: "select",
+        optionen: [
+          { wert: "", text: "behalten" },
+          { wert: "ja", text: "entfernen" }
+        ]
+      });
+    }
+    felder.push({ name: "alle", label: "Gilt für", typ: "select", optionen: [{ wert: "", text: "diese Seite" }, { wert: "ja", text: "alle Seiten der Tafel" }] });
+    return W.dialog({ titel: "Design der Seite", felder: felder, knopf: "Übernehmen" }).then(function (w) {
+      if (!w) {
+        hintergrundSetzen();
+        return;
+      }
+      var bildId = w.bildWeg === "ja" ? null : s.hgBild || null;
+      var weiter = Promise.resolve();
+      if (w.bild) {
+        weiter = bildVerkleinern(w.bild).then(function (r) {
+          return S.mediumSpeichern(r.blob, w.bild.name).then(function (id) {
+            bildId = id;
+          });
+        });
+      }
+      return weiter.then(function () {
+        (w.alle ? tafel.seiten : [s]).forEach(function (x) {
+          x.hintergrund = "eigen";
+          x.hgFarbe = w.farbe || "#ffffff";
+          x.hgMuster = w.muster || "";
+          if (bildId) x.hgBild = bildId;
+          else delete x.hgBild;
+        });
+        hintergrundSetzen();
+        festhalten();
+      }, fehlerMelden);
+    });
   }
 
   function modusSetzen(neu) {
@@ -681,8 +936,26 @@
     });
   }
 
-  function adresseEinfuegen(url, wunsch, titel) {
-    url = String(url || "").trim();
+  function dateiEinfuegen(datei, ort) {
+    if (!datei) return Promise.resolve();
+    var mb = datei.size / 1024 / 1024;
+    var weiter = mb > 100 ? W.bestaetigen("Die Datei ist " + Math.round(mb) + " MB gross. Grosse Dateien füllen den Browserspeicher und machen Exporte sehr gross. Trotzdem einfügen?", "Einfügen") : Promise.resolve(true);
+    return weiter.then(function (ja) {
+      if (!ja) return;
+      return S.mediumSpeichern(datei, datei.name).then(
+        function (id) {
+          var lage = ort ? { x: ort.x - E.GROESSE.datei[0] / 2, y: ort.y - E.GROESSE.datei[1] / 2 } : null;
+          hinzufuegen("datei", { medium: id, name: datei.name || "Datei", groesse: datei.size, mime: datei.type || "" }, lage);
+        },
+        function (f) {
+          W.melden("Die Datei konnte nicht gespeichert werden: " + f.message, 8000);
+        }
+      );
+    });
+  }
+
+  function adresseEinfuegen(url, wunsch, titel, mitQr) {
+    url = E.snippetUrl(url);
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = "https://" + url;
     var r = E.erkennen(url, wunsch);
@@ -711,7 +984,8 @@
       return;
     }
     if (r.typ === "link") {
-      hinzufuegen("link", r.daten);
+      if (mitQr) r.daten.qr = true;
+      hinzufuegen("link", r.daten, mitQr ? { b: 380, h: 440 } : null);
       return;
     }
     hinzufuegen("webseite", r.daten);
@@ -754,20 +1028,36 @@
       });
       return;
     }
+    if (typ === "datei") {
+      W.dialog({
+        titel: "Datei hochladen",
+        felder: [
+          { name: "datei", label: "Datei vom Gerät (PDF, Arbeitsblatt, Audio, …)", typ: "file", pflicht: true },
+          { typ: "hinweis", text: "Die Datei erscheint als Karte mit Vorschau (Bilder, PDF, Audio) und lässt sich öffnen oder herunterladen. Dateien lassen sich auch auf die Tafel ziehen." }
+        ],
+        knopf: "Hochladen"
+      }).then(function (w) {
+        if (w && w.datei) dateiEinfuegen(w.datei);
+      });
+      return;
+    }
     if (typ === "webseite" || typ === "link") {
       var webseite = typ === "webseite";
       W.dialog({
-        titel: webseite ? "Webseite einbinden" : "Link einfügen",
+        titel: webseite ? "Webseite einbetten" : "Link einfügen",
         felder: [
-          { name: "url", label: "Adresse", typ: "url", platzhalter: "https://…", pflicht: true },
+          webseite
+            ? { name: "url", label: "Adresse oder iFrame-Snippet", typ: "textarea", platzhalter: "https://… oder <iframe src=\"…\"></iframe>", pflicht: true }
+            : { name: "url", label: "Adresse", typ: "url", platzhalter: "https://…", pflicht: true },
           { name: "titel", label: "Titel (freiwillig)" },
           webseite
-            ? { typ: "hinweis", text: "Die Seite erscheint direkt auf der Tafel. Manche Seiten verbieten das Einbetten; dann bleibt die Fläche leer. Über «Neuer Tab» öffnet sie sich trotzdem, oder du fügst sie als Link ein." }
-            : { typ: "hinweis", text: "Ein Link erscheint als Karte und öffnet die Seite in einem neuen Tab." }
+            ? { typ: "hinweis", text: "Die Seite erscheint direkt auf der Tafel. Einbett-Codes (iFrame-Snippets) von LearningApps, H5P, Padlet, Google und anderen werden erkannt. Manche Seiten verbieten das Einbetten; dann bleibt die Fläche leer. Über «Neuer Tab» öffnet sie sich trotzdem, oder du fügst sie als Link ein." }
+            : { name: "qr", label: "QR-Code", typ: "select", optionen: [{ wert: "ja", text: "mit QR-Code (zum Scannen mit dem Handy)" }, { wert: "", text: "ohne QR-Code" }] }
         ],
         knopf: "Einfügen"
       }).then(function (w) {
-        if (w && w.url) adresseEinfuegen(w.url, typ, w.titel);
+        if (!w || !w.url) return;
+        adresseEinfuegen(w.url, typ, w.titel, w.qr === "ja");
       });
       return;
     }
@@ -901,8 +1191,8 @@
       var k = el("button", "farbknopf" + (i === 0 ? " aktiv" : ""));
       k.type = "button";
       k.style.setProperty("--farbe", f);
-      k.title = "Farbe " + (i + 1);
-      k.setAttribute("aria-label", "Farbe " + (i + 1));
+      k.title = FARBNAMEN[i];
+      k.setAttribute("aria-label", FARBNAMEN[i]);
       k.addEventListener("click", function () {
         farbe = f;
         if (werkzeug === "radierer") werkzeugSetzen("stift");
@@ -936,10 +1226,15 @@
       W.melden("Zeichnungen gelöscht. Rückgängig mit Ctrl+Z.");
     });
     hg.addEventListener("change", function () {
+      if (hg.value === "eigen") {
+        designBearbeiten();
+        return;
+      }
       seite().hintergrund = hg.value;
-      hintergrundSetzen(hg.value);
+      hintergrundSetzen();
       festhalten();
     });
+    document.getElementById("design-knopf").addEventListener("click", designBearbeiten);
     document.getElementById("rueckgaengig").addEventListener("click", function () {
       zurueckholen(-1);
     });
@@ -1080,7 +1375,7 @@
       var text = (daten.getData("text/plain") || "").trim();
       if (!text) return;
       ev.preventDefault();
-      if (/^https?:\/\/\S+$/i.test(text)) adresseEinfuegen(text, "webseite");
+      if (/^https?:\/\/\S+$/i.test(text) || /^<iframe[\s>]/i.test(text)) adresseEinfuegen(text, "webseite");
       else hinzufuegen("text", { text: text });
     });
 
@@ -1097,7 +1392,8 @@
         Array.prototype.forEach.call(dateien, function (d) {
           if (/^image\//.test(d.type)) bildEinfuegen(d, ort);
           else if (/^video\//.test(d.type)) videoEinfuegen(d, ort);
-          else if (/\.(json|html?)$/i.test(d.name)) seitenImportieren(d);
+          else if (/\.wandtafel\.json$/i.test(d.name) || /\.html?$/i.test(d.name)) seitenImportieren(d);
+          else dateiEinfuegen(d, ort);
         });
         return;
       }
@@ -1201,7 +1497,8 @@
     },
     adresseEinfuegen: adresseEinfuegen,
     bildEinfuegen: bildEinfuegen,
-    videoEinfuegen: videoEinfuegen
+    videoEinfuegen: videoEinfuegen,
+    dateiEinfuegen: dateiEinfuegen
   };
 
   starten();

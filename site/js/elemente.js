@@ -40,7 +40,11 @@
     stoppuhr: [400, 260],
     zufall: [440, 380],
     gruppen: [620, 440],
-    wuerfel: [360, 280]
+    wuerfel: [360, 280],
+    uhr: [360, 420],
+    ampel: [220, 500],
+    sozialform: [460, 380],
+    datei: [440, 340]
   };
 
   var NAMEN = {
@@ -52,10 +56,21 @@
     link: "Link",
     timer: "Timer",
     stoppuhr: "Stoppuhr",
-    zufall: "Zufall",
+    zufall: "Lostopf",
     gruppen: "Gruppen",
-    wuerfel: "Würfel"
+    wuerfel: "Würfel",
+    uhr: "Uhr",
+    ampel: "Ampel",
+    sozialform: "Sozialform",
+    datei: "Datei"
   };
+
+  var SOZIALFORMEN = [
+    { wert: "einzel", text: "Einzelarbeit", icon: '<circle cx="12" cy="7" r="3.5"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>' },
+    { wert: "partner", text: "Partnerarbeit", icon: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-3.5 2.6-6 6-6 1.5 0 2.9.5 4 1.4 1.1-.9 2.5-1.4 4-1.4 3.4 0 6 2.5 6 6"/>' },
+    { wert: "gruppe", text: "Gruppenarbeit", icon: '<circle cx="12" cy="6" r="2.6"/><circle cx="5.5" cy="10" r="2.4"/><circle cx="18.5" cy="10" r="2.4"/><path d="M7 21c0-3 2.2-5.5 5-5.5s5 2.5 5 5.5M1 20c0-2.6 1.8-4.6 4.5-4.6M23 20c0-2.6-1.8-4.6-4.5-4.6"/>' },
+    { wert: "plenum", text: "Plenum", icon: '<path d="M4 5h16v9H9l-5 4z"/><path d="M8 9h8"/>' }
+  ];
 
   // ---------- Adressen erkennen ----------
 
@@ -97,6 +112,36 @@
     if (/\.(mp4|webm|ogv|ogg|mov|m4v)$/i.test(pfad)) return { typ: "video", daten: { art: "datei", url: url } };
     if (/\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(pfad)) return { typ: "bild", daten: { src: url } };
     return { typ: wunsch === "link" ? "link" : "webseite", daten: { url: url } };
+  }
+
+  /** Adresse aus einem iFrame-Snippet (<iframe src="…">) holen, sonst den Text selbst */
+  function snippetUrl(text) {
+    text = String(text || "").trim();
+    var m = text.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+    return m ? m[1].replace(/&amp;/g, "&") : text;
+  }
+
+  /** QR-Code einer Adresse als SVG (benoetigt qrcode.js) */
+  function qrSvg(text) {
+    if (!window.qrcode) return "";
+    window.qrcode.stringToBytes = window.qrcode.stringToBytesFuncs["UTF-8"];
+    var qr = window.qrcode(0, "M");
+    qr.addData(String(text));
+    qr.make();
+    var n = qr.getModuleCount();
+    var pfad = "";
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) if (qr.isDark(y, x)) pfad += "M" + (x + 2) + " " + (y + 2) + "h1v1h-1z";
+    }
+    return (
+      '<svg viewBox="0 0 ' + (n + 4) + " " + (n + 4) + '" shape-rendering="crispEdges" role="img" aria-label="QR-Code"><rect width="100%" height="100%" fill="#fff"/><path d="' + pfad + '" fill="#000"/></svg>'
+    );
+  }
+
+  function dateiGroesse(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + " KB";
+    return (bytes / 1024 / 1024).toFixed(1).replace(".", ",") + " MB";
   }
 
   /** Bekannte Seiten in ihre Einbett-Adresse umschreiben */
@@ -235,8 +280,59 @@
     knoten.appendChild(griff);
     var koerper = el("div", "koerper");
     knoten.appendChild(koerper);
+    if (!kontext.druck) {
+      // Spotlight: Element gross ueber der ganzen Seite zeigen (auch beim Praesentieren)
+      var spot = knopf("spot-knopf", "vollbild", "Im Spotlight zeigen (Esc schliesst)");
+      spot.addEventListener("click", function () {
+        spotlight(knoten, !knoten.classList.contains("im-spotlight"));
+      });
+      knoten.appendChild(spot);
+    }
     return { knoten: knoten, griff: griff, werkzeuge: werkzeuge, koerper: koerper };
   }
+
+  /** Zeigt ein Element gross ueber der Seite oder stellt es zurueck (wird nicht gespeichert) */
+  function spotlight(knoten, an) {
+    var ebene = knoten.parentNode;
+    if (!ebene) return;
+    ebene.querySelectorAll(".im-spotlight").forEach(function (k) {
+      k.classList.remove("im-spotlight");
+      var s = k.querySelector(".spot-knopf");
+      if (s) s.innerHTML = W.icon("vollbild");
+    });
+    knoten.classList.toggle("im-spotlight", an);
+    ebene.classList.toggle("hat-spotlight", an);
+    var knopfSpot = knoten.querySelector(".spot-knopf");
+    if (knopfSpot) {
+      knopfSpot.innerHTML = W.icon(an ? "schliessen" : "vollbild");
+      knopfSpot.title = an ? "Spotlight schliessen (Esc)" : "Im Spotlight zeigen (Esc schliesst)";
+    }
+    if (an && !ebene.dataset.spotHoert) {
+      ebene.dataset.spotHoert = "1";
+      ebene.addEventListener("pointerdown", function (ev) {
+        if (ev.target === ebene && ebene.classList.contains("hat-spotlight")) spotlightSchliessen();
+      });
+    }
+  }
+
+  /** Schliesst ein offenes Spotlight; liefert true, wenn eines offen war */
+  function spotlightSchliessen() {
+    var k = document.querySelector(".im-spotlight");
+    if (!k) return false;
+    spotlight(k, false);
+    return true;
+  }
+
+  window.addEventListener(
+    "keydown",
+    function (ev) {
+      if (ev.key === "Escape" && !document.querySelector("dialog[open]") && spotlightSchliessen()) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    },
+    true
+  );
 
   function lage(knoten, e) {
     knoten.style.left = e.x + "px";
@@ -434,9 +530,14 @@
       koerper.appendChild(leiste);
     },
 
-    link: function (e, koerper) {
+    link: function (e, koerper, werkzeuge, knoten, kontext) {
       var url = sicherUrl(e.daten.url);
-      var karte = el("div", "link-karte");
+      var karte = el("div", "link-karte" + (e.daten.qr && url ? " mit-qr" : ""));
+      if (e.daten.qr && url) {
+        var qr = el("div", "qr-bild");
+        qr.innerHTML = qrSvg(url);
+        karte.appendChild(qr);
+      }
       var a = el("a", null, e.daten.titel || url || "Link");
       if (url) {
         a.href = url;
@@ -446,6 +547,20 @@
       karte.appendChild(a);
       if (url) karte.appendChild(el("small", null, host(url)));
       koerper.appendChild(karte);
+      var qrKnopf = werkzeug(werkzeuge, "qr", e.daten.qr ? "QR-Code ausblenden" : "QR-Code anzeigen", function () {
+        e.daten.qr = !e.daten.qr;
+        // Mit QR-Code braucht die Karte Platz
+        if (e.daten.qr && e.h < 420) {
+          e.h = 420;
+          e.b = Math.max(e.b, 360);
+          lage(knoten, e);
+        }
+        koerper.innerHTML = "";
+        INHALT.link(e, koerper, null, knoten, kontext);
+        qrKnopf.title = e.daten.qr ? "QR-Code ausblenden" : "QR-Code anzeigen";
+        qrKnopf.setAttribute("aria-label", qrKnopf.title);
+        kontext.festhalten();
+      });
     },
 
     timer: function (e, koerper, werkzeuge, knoten, kontext) {
@@ -456,17 +571,44 @@
       var balken = el("div", "zeit-balken");
       var fuellung = el("span");
       balken.appendChild(fuellung);
-      var knoepfe = el("div", "widget-knoepfe");
-      var minus = wKnopf("−1 min");
-      var start = wKnopf("Start", true);
-      var plus = wKnopf("+1 min");
-      var neu = wKnopf("Zurück");
-      [minus, start, plus, neu].forEach(function (k) {
-        knoepfe.appendChild(k);
+      var vorgaben = el("div", "widget-knoepfe timer-vorgaben");
+      [5, 10, 15].forEach(function (min) {
+        var k = wKnopf(min + " min");
+        k.addEventListener("click", function () {
+          einstellen(min * 60);
+        });
+        vorgaben.appendChild(k);
       });
+      var eigen = wKnopf("Andere Zeit");
+      vorgaben.appendChild(eigen);
+      var formular = el("div", "widget-knoepfe timer-eigen");
+      formular.hidden = true;
+      var minuten = el("input");
+      minuten.type = "number";
+      minuten.min = "0";
+      minuten.max = "99";
+      minuten.setAttribute("aria-label", "Minuten");
+      var sekunden = el("input");
+      sekunden.type = "number";
+      sekunden.min = "0";
+      sekunden.max = "59";
+      sekunden.setAttribute("aria-label", "Sekunden");
+      var ok = wKnopf("OK", true);
+      formular.appendChild(minuten);
+      formular.appendChild(el("span", null, "min"));
+      formular.appendChild(sekunden);
+      formular.appendChild(el("span", null, "s"));
+      formular.appendChild(ok);
+      var knoepfe = el("div", "widget-knoepfe");
+      var start = wKnopf("Start", true);
+      var neu = wKnopf("Zurücksetzen");
+      knoepfe.appendChild(start);
+      knoepfe.appendChild(neu);
       koerper.appendChild(anzeige);
       koerper.appendChild(balken);
       koerper.appendChild(knoepfe);
+      koerper.appendChild(vorgaben);
+      koerper.appendChild(formular);
 
       function zeichnen() {
         anzeige.textContent = zeitText(rest);
@@ -496,18 +638,25 @@
         }, 200);
         zeichnen();
       });
-      function verstellen(schritt) {
+      function einstellen(sek) {
         anhalten();
-        e.daten.sekunden = begrenzen(e.daten.sekunden + schritt, 60, 99 * 60);
+        e.daten.sekunden = begrenzen(Math.round(sek), 1, 99 * 60 + 59);
         rest = e.daten.sekunden;
+        formular.hidden = true;
         zeichnen();
         kontext.festhalten();
       }
-      minus.addEventListener("click", function () {
-        verstellen(-60);
+      eigen.addEventListener("click", function () {
+        formular.hidden = !formular.hidden;
+        minuten.value = Math.floor(e.daten.sekunden / 60);
+        sekunden.value = e.daten.sekunden % 60;
+        if (!formular.hidden) minuten.focus();
       });
-      plus.addEventListener("click", function () {
-        verstellen(60);
+      ok.addEventListener("click", function () {
+        einstellen((parseInt(minuten.value, 10) || 0) * 60 + (parseInt(sekunden.value, 10) || 0));
+      });
+      formular.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") ok.click();
       });
       neu.addEventListener("click", function () {
         anhalten();
@@ -561,15 +710,15 @@
 
       if (!namenListe(e.daten.namen).length || e.daten.bearbeiten) {
         var feld = el("textarea", "namen-feld");
-        feld.placeholder = "Namen, einer pro Zeile";
+        feld.placeholder = "Ein Los pro Zeile, zum Beispiel Namen";
         feld.value = e.daten.namen;
         var zeile = el("label", "widget-option");
         var ohne = el("input");
         ohne.type = "checkbox";
         ohne.checked = e.daten.ohne;
         zeile.appendChild(ohne);
-        zeile.appendChild(document.createTextNode(" Gezogene nicht wiederholen"));
-        var fertig = wKnopf("Fertig", true);
+        zeile.appendChild(document.createTextNode(" Gezogene Lose nicht zurücklegen"));
+        var fertig = wKnopf("Lose in den Topf geben", true);
         fertig.addEventListener("click", function () {
           e.daten.namen = feld.value;
           e.daten.ohne = ohne.checked;
@@ -590,14 +739,14 @@
       var anzeige = el("div", "zufall-name", e.daten.letzter || "?");
       var info = el("div", "widget-info");
       var knoepfe2 = el("div", "widget-knoepfe");
-      var ziehen = wKnopf("Ziehen", true);
-      var neu = wKnopf("Neu mischen");
-      var liste = wKnopf("Namen");
+      var ziehen = wKnopf("Los ziehen", true);
+      var neu = wKnopf("Alle zurück in den Topf");
+      var liste = wKnopf("Lose");
       [ziehen, neu, liste].forEach(function (k) {
         knoepfe2.appendChild(k);
       });
       function infoZeigen() {
-        info.textContent = e.daten.ohne ? namen.length - e.daten.gezogen.length + " von " + namen.length + " übrig" : namen.length + " Namen";
+        info.textContent = e.daten.ohne ? namen.length - e.daten.gezogen.length + " von " + namen.length + " Losen im Topf" : namen.length + " Lose";
       }
       ziehen.addEventListener("click", function () {
         var offen = e.daten.ohne
@@ -606,7 +755,7 @@
             })
           : namen;
         if (!offen.length) {
-          anzeige.textContent = "Alle gezogen";
+          anzeige.textContent = "Der Topf ist leer!";
           return;
         }
         var wahl = offen[Math.floor(Math.random() * offen.length)];
@@ -651,23 +800,44 @@
         var feld = el("textarea", "namen-feld");
         feld.placeholder = "Namen, einer pro Zeile";
         feld.value = e.daten.namen;
-        var zeile = el("label", "widget-option", "Personen pro Gruppe ");
+        var zeile = el("div", "widget-option");
+        var art = el("select", "w-wahl");
+        art.setAttribute("aria-label", "Bedingung für Gruppenmischung");
+        [
+          ["groesse", "Gruppengrösse"],
+          ["anzahl", "Anzahl Gruppen"]
+        ].forEach(function (o) {
+          var opt = el("option", null, o[1]);
+          opt.value = o[0];
+          art.appendChild(opt);
+        });
+        art.value = e.daten.nach || "groesse";
         var zahl = el("input");
         zahl.type = "number";
         zahl.min = "2";
-        zahl.max = "10";
-        zahl.value = e.daten.groesse;
+        zahl.max = "20";
+        zahl.setAttribute("aria-label", "Zahl");
+        zahl.value = art.value === "anzahl" ? e.daten.gruppenzahl || 4 : e.daten.groesse;
+        art.addEventListener("change", function () {
+          zahl.value = art.value === "anzahl" ? e.daten.gruppenzahl || 4 : e.daten.groesse;
+        });
+        zeile.appendChild(art);
         zeile.appendChild(zahl);
         var bilden = wKnopf("Gruppen bilden", true);
         bilden.addEventListener("click", function () {
           e.daten.namen = feld.value;
-          e.daten.groesse = begrenzen(parseInt(zahl.value, 10) || 3, 2, 10);
+          e.daten.nach = art.value;
+          if (art.value === "anzahl") e.daten.gruppenzahl = begrenzen(parseInt(zahl.value, 10) || 4, 2, 20);
+          else e.daten.groesse = begrenzen(parseInt(zahl.value, 10) || 3, 2, 20);
           var namen = mischen(namenListe(e.daten.namen));
           if (namen.length < 2) {
             W.melden("Mindestens zwei Namen eingeben.");
             return;
           }
-          var anzahl = Math.max(1, Math.round(namen.length / e.daten.groesse));
+          var anzahl =
+            e.daten.nach === "anzahl"
+              ? Math.min(namen.length, e.daten.gruppenzahl)
+              : Math.max(1, Math.round(namen.length / e.daten.groesse));
           var gruppen = [];
           for (var i = 0; i < anzahl; i++) gruppen.push([]);
           namen.forEach(function (n, i) {
@@ -724,7 +894,7 @@
       var werfen = wKnopf("Würfeln", true);
       var anzahl = el("select", "w-wahl");
       anzahl.setAttribute("aria-label", "Anzahl Würfel");
-      [1, 2, 3].forEach(function (n) {
+      [1, 2, 3, 4, 5, 6].forEach(function (n) {
         var o = el("option", null, n + " Würfel");
         o.value = n;
         anzahl.appendChild(o);
@@ -737,6 +907,7 @@
       koerper.appendChild(knoepfe);
       function zeichnen(werte) {
         flaeche.innerHTML = "";
+        flaeche.classList.toggle("viele", werte.length > 3);
         werte.forEach(function (w) {
           flaeche.appendChild(wuerfelBild(w));
         });
@@ -776,6 +947,165 @@
         kontext.festhalten();
       });
       zeichnen(e.daten.werte);
+    },
+
+    uhr: function (e, koerper, werkzeuge, knoten, kontext) {
+      var NS = "http://www.w3.org/2000/svg";
+      var svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("viewBox", "0 0 200 200");
+      svg.setAttribute("class", "uhr-blatt");
+      svg.setAttribute("role", "img");
+      var teile = '<circle cx="100" cy="100" r="94" class="uhr-rand"/>';
+      for (var i = 0; i < 60; i++) {
+        var lang = i % 5 === 0;
+        teile += '<line x1="100" y1="' + (lang ? 14 : 12) + '" x2="100" y2="' + (lang ? 28 : 18) + '" class="' + (lang ? "uhr-strich-lang" : "uhr-strich") + '" transform="rotate(' + i * 6 + ' 100 100)"/>';
+      }
+      teile +=
+        '<line x1="100" y1="100" x2="100" y2="52" class="uhr-stunde"/>' +
+        '<line x1="100" y1="100" x2="100" y2="30" class="uhr-minute"/>' +
+        '<line x1="100" y1="114" x2="100" y2="24" class="uhr-sekunde"/>' +
+        '<circle cx="100" cy="100" r="5" class="uhr-mitte"/>';
+      svg.innerHTML = teile;
+      var zeiger = svg.querySelectorAll(".uhr-stunde, .uhr-minute, .uhr-sekunde");
+      var digital = el("div", "uhr-digital");
+      koerper.appendChild(svg);
+      koerper.appendChild(digital);
+      function zeichnen() {
+        var jetzt = new Date();
+        var s = jetzt.getSeconds();
+        var m = jetzt.getMinutes() + s / 60;
+        var h = (jetzt.getHours() % 12) + m / 60;
+        zeiger[0].setAttribute("transform", "rotate(" + h * 30 + " 100 100)");
+        zeiger[1].setAttribute("transform", "rotate(" + m * 6 + " 100 100)");
+        zeiger[2].setAttribute("transform", "rotate(" + s * 6 + " 100 100)");
+        digital.textContent = zweistellig(jetzt.getHours()) + ":" + zweistellig(jetzt.getMinutes());
+        svg.setAttribute("aria-label", "Uhrzeit " + digital.textContent);
+      }
+      zeichnen();
+      stoppen(e.id);
+      if (kontext.druck) return;
+      laufend[e.id] = setInterval(function () {
+        // Element nicht mehr auf der Seite: Uhr anhalten
+        if (!koerper.isConnected) stoppen(e.id);
+        else zeichnen();
+      }, 1000);
+    },
+
+    ampel: function (e, koerper, werkzeuge, knoten, kontext) {
+      var ampel = el("div", "ampel");
+      ["rot", "gelb", "gruen"].forEach(function (farbe) {
+        var licht = el("button", "ampel-licht ampel-" + farbe + (e.daten.licht === farbe ? " an" : ""));
+        licht.type = "button";
+        licht.setAttribute("aria-label", { rot: "Rotes Licht", gelb: "Gelbes Licht", gruen: "Grünes Licht" }[farbe]);
+        licht.setAttribute("aria-pressed", String(e.daten.licht === farbe));
+        licht.addEventListener("click", function () {
+          e.daten.licht = e.daten.licht === farbe ? "" : farbe;
+          ampel.querySelectorAll(".ampel-licht").forEach(function (l) {
+            var an = l.classList.contains("ampel-" + e.daten.licht);
+            l.classList.toggle("an", an);
+            l.setAttribute("aria-pressed", String(an));
+          });
+          kontext.festhalten();
+        });
+        ampel.appendChild(licht);
+      });
+      koerper.appendChild(ampel);
+    },
+
+    sozialform: function (e, koerper, werkzeuge, knoten, kontext) {
+      if (!e.daten.form) e.daten.form = "einzel";
+      var aktuell = el("div", "sozialform-aktuell");
+      var wahl = el("div", "sozialform-wahl");
+      function svg(f, klasse) {
+        return '<svg class="' + klasse + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + f.icon + "</svg>";
+      }
+      function zeichnen() {
+        var f = SOZIALFORMEN.filter(function (x) {
+          return x.wert === e.daten.form;
+        })[0];
+        aktuell.innerHTML = svg(f, "sozialform-icon");
+        aktuell.appendChild(el("strong", null, f.text));
+        wahl.querySelectorAll("button").forEach(function (k) {
+          k.classList.toggle("aktiv", k.dataset.form === e.daten.form);
+          k.setAttribute("aria-pressed", String(k.dataset.form === e.daten.form));
+        });
+      }
+      SOZIALFORMEN.forEach(function (f) {
+        var k = el("button", "sozialform-knopf");
+        k.type = "button";
+        k.dataset.form = f.wert;
+        k.title = f.text;
+        k.setAttribute("aria-label", f.text);
+        k.innerHTML = svg(f, "");
+        k.addEventListener("click", function () {
+          e.daten.form = f.wert;
+          zeichnen();
+          kontext.festhalten();
+        });
+        wahl.appendChild(k);
+      });
+      koerper.appendChild(aktuell);
+      koerper.appendChild(wahl);
+      zeichnen();
+    },
+
+    datei: function (e, koerper, werkzeuge, knoten, kontext) {
+      var d = e.daten;
+      var name = d.name || "Datei";
+      var endung = (name.match(/\.([a-z0-9]{1,5})$/i) || [])[1] || "";
+      var karte = el("div", "datei-karte");
+      var vorschau = el("div", "datei-vorschau");
+      var unten = el("div", "datei-unten");
+      var symbol = el("span", "datei-symbol", endung.toUpperCase() || "?");
+      var info = el("div", "datei-info");
+      info.appendChild(el("strong", null, name));
+      info.appendChild(el("small", null, [endung.toUpperCase(), dateiGroesse(d.groesse)].filter(Boolean).join(" · ")));
+      var laden = el("a", "w-knopf", "Herunterladen");
+      laden.download = name;
+      var oeffnen = el("a", "w-knopf", "Öffnen");
+      oeffnen.target = "_blank";
+      oeffnen.rel = "noopener";
+      unten.appendChild(symbol);
+      unten.appendChild(info);
+      unten.appendChild(oeffnen);
+      unten.appendChild(laden);
+      karte.appendChild(vorschau);
+      karte.appendChild(unten);
+      koerper.appendChild(karte);
+      if (kontext.druck) {
+        vorschau.remove();
+        oeffnen.remove();
+        laden.remove();
+        return;
+      }
+      quelle(d, kontext, function (url) {
+        if (!url) return;
+        // Gespeicherte Medien sind data:-Adressen (Export) oder blob:-Adressen; zum Oeffnen ein Blob
+        var blobUrl = url;
+        if (/^data:/.test(url) && W.dataUrlZuBlob) blobUrl = URL.createObjectURL(W.dataUrlZuBlob(url));
+        laden.href = blobUrl;
+        oeffnen.href = blobUrl;
+        var mime = d.mime || "";
+        if (/^image\//.test(mime)) {
+          var bild = el("img");
+          bild.alt = name;
+          bild.src = blobUrl;
+          bild.draggable = false;
+          vorschau.appendChild(bild);
+        } else if (mime === "application/pdf") {
+          var f = el("iframe");
+          f.src = blobUrl;
+          f.title = name;
+          vorschau.appendChild(f);
+        } else if (/^audio\//.test(mime)) {
+          var a = el("audio");
+          a.controls = true;
+          a.src = blobUrl;
+          vorschau.appendChild(a);
+        } else {
+          vorschau.appendChild(el("span", "datei-gross", endung.toUpperCase() || "Datei"));
+        }
+      });
     }
   };
 
@@ -819,6 +1149,72 @@
     if (aktuell) strichZeichnen(stift, aktuell);
   }
 
+  // ---------- Hintergrund ----------
+
+  var MUSTER = {
+    kariert: function (linie) {
+      return { bild: "linear-gradient(" + linie + " 1px, transparent 1px), linear-gradient(90deg, " + linie + " 1px, transparent 1px)", groesse: "40px 40px" };
+    },
+    liniert: function (linie) {
+      return { bild: "linear-gradient(transparent 59px, " + linie + " 59px, " + linie + " 60px)", groesse: "100% 60px" };
+    },
+    punkte: function (linie) {
+      return { bild: "radial-gradient(" + linie + " 1.6px, transparent 1.8px)", groesse: "40px 40px" };
+    }
+  };
+
+  function hell(farbe) {
+    var m = String(farbe).match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) return true;
+    var r = parseInt(m[1], 16);
+    var g = parseInt(m[2], 16);
+    var b = parseInt(m[3], 16);
+    return 0.299 * r + 0.587 * g + 0.114 * b > 140;
+  }
+
+  /**
+   * Setzt den Hintergrund einer Seite auf die Flaeche: eine Vorlage (hg-…) oder ein
+   * eigenes Design aus Farbe, Muster und Hintergrundbild.
+   */
+  function hintergrundAnwenden(flaeche, seite, mediumUrl) {
+    var name = seite.hintergrund || "weiss";
+    flaeche.className = flaeche.className.replace(/\bhg-\S+/g, "").trim() + " hg-" + name;
+    flaeche.style.backgroundColor = "";
+    flaeche.style.backgroundImage = "";
+    flaeche.style.backgroundSize = "";
+    flaeche.style.backgroundPosition = "";
+    if (name !== "eigen") return;
+    var farbe = seite.hgFarbe || "#ffffff";
+    var linie = hell(farbe) ? "rgba(40, 70, 90, 0.22)" : "rgba(255, 255, 255, 0.22)";
+    var bilder = [];
+    var groessen = [];
+    var muster = MUSTER[seite.hgMuster];
+    if (muster) {
+      var m = muster(linie);
+      bilder.push(m.bild);
+      groessen.push(m.groesse);
+    }
+    function setzen(bildUrl) {
+      var b = bilder.slice();
+      var g = groessen.slice();
+      if (bildUrl) {
+        b.push('url("' + String(bildUrl).replace(/"/g, "%22") + '")');
+        g.push("cover");
+      }
+      flaeche.style.backgroundColor = farbe;
+      flaeche.style.backgroundImage = b.join(", ");
+      flaeche.style.backgroundSize = g.join(", ");
+      flaeche.style.backgroundPosition = "center";
+    }
+    setzen(null);
+    if (seite.hgBild && mediumUrl) {
+      mediumUrl(seite.hgBild).then(function (url) {
+        // Seite inzwischen gewechselt?
+        if (url && flaeche.classList.contains("hg-eigen")) setzen(url);
+      });
+    }
+  }
+
   /** Kurzer Titel einer Seite fuer Seitenliste und Navigation */
   function seitenTitel(seite, nummer) {
     if (seite.titel) return seite.titel;
@@ -851,6 +1247,12 @@
     alleStoppen: alleStoppen,
     stricheZeichnen: stricheZeichnen,
     seitenTitel: seitenTitel,
+    snippetUrl: snippetUrl,
+    qrSvg: qrSvg,
+    spotlight: spotlight,
+    spotlightSchliessen: spotlightSchliessen,
+    hintergrundAnwenden: hintergrundAnwenden,
+    SOZIALFORMEN: SOZIALFORMEN,
     hintergruende: [
       { wert: "weiss", text: "Weiss" },
       { wert: "kariert", text: "Kariert" },
@@ -858,7 +1260,8 @@
       { wert: "punkte", text: "Punkte" },
       { wert: "gruen", text: "Wandtafel grün" },
       { wert: "dunkel", text: "Dunkelblau" },
-      { wert: "kork", text: "Kork" }
+      { wert: "kork", text: "Kork" },
+      { wert: "eigen", text: "Eigenes Design …" }
     ]
   };
 })();

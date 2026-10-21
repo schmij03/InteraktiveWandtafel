@@ -76,7 +76,7 @@
 
   var DATEIEN = {
     css: ["css/basis.css", "css/tafel.css"],
-    js: ["js/gemeinsam.js", "js/elemente.js", "js/ansicht.js"]
+    js: ["js/gemeinsam.js", "js/qrcode.js", "js/elemente.js", "js/ansicht.js"]
   };
 
   function holen(pfad, art) {
