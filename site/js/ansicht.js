@@ -31,7 +31,8 @@
   };
 
   function seiteBauen(seite) {
-    var flaeche = el("div", "tafel hg-" + (seite.hintergrund || "weiss"));
+    var flaeche = el("div", "tafel");
+    E.hintergrundAnwenden(flaeche, seite, kontext.mediumUrl);
     flaeche.style.width = E.BREITE + "px";
     flaeche.style.height = E.HOEHE + "px";
     var ebene = el("div", "ebene-elemente");

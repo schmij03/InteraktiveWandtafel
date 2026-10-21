@@ -6,8 +6,11 @@ interaktiven Wandtafel von fobizz und aufgebaut wie die Tafel in
 
 - **Fächer** anlegen, darin **Kapitel oder Themen**, darin **Tafeln**
 - Eine Tafel hat mehrere **Seiten** wie eine Präsentation
-- Auf jeder Seite: Text, Notiz, **Bild**, **Video** (YouTube, Vimeo, Videodatei), **Webseite**, Link,
-  Timer, Stoppuhr, Zufallsgenerator, Gruppen, Würfel; darüber **zeichnen** mit Stift, Marker und Radierer
+- Auf jeder Seite: Text, Notiz, **Bild** (auch bemalen), **Video** (YouTube, Vimeo, Videodatei), **Webseite**
+  (Adresse oder iFrame-Snippet), Link mit **QR-Code**, **Datei**; Module Timer, Stoppuhr, **Uhr**, **Ampel**,
+  **Sozialform**, **Lostopf**, Gruppen, Würfel; darüber **zeichnen** mit Stift, Marker und Radierer
+- **Spotlight**: eine Karte gross über der Seite zeigen, auch beim Präsentieren
+- **Design** pro Seite: Vorlagen oder eigene Farbe, Muster und Hintergrundbild
 - **Präsentieren** im Vollbild mit Pfeiltasten, auch während der Präsentation zeichnen
 - **Export** als HTML-Datei (offline präsentieren), PDF und Wandtafel-Datei; **Import** auf jedem Gerät
 
@@ -51,11 +54,14 @@ Run workflow* starten. Die Seite ist dann unter `https://schmij03.github.io/Inte
 
 | Bereich | Funktion |
 |---|---|
-| Bearbeiten | Text, Notiz, Bild, Video, Webseite, Link, Module (Timer, Stoppuhr, Zufall, Gruppen, Würfel); Elemente an der Kopfleiste verschieben, am orangen Punkt vergrössern (Bilder und Videos behalten das Seitenverhältnis, mit Shift frei), duplizieren, nach hinten legen, löschen (Entf); Doppelklick auf den Namen gibt dem Element einen eigenen Titel |
-| Einfügen | Bilder auch mit Ctrl+V oder Hineinziehen; Adressen mit Ctrl+V werden zu Webseite oder Video; Bild- und Videodateien hineinziehen |
-| Zeichnen (Z) | Stift, Textmarker, Radierer, sechs Farben, drei Dicken, über die ganze Seite |
+| Bearbeiten | Text, Notiz, Bild, Video, Webseite, Link, Datei, Module (Timer, Stoppuhr, Uhr, Ampel, Sozialform, Lostopf, Gruppen, Würfel); Elemente an der Kopfleiste verschieben, am orangen Punkt vergrössern (Bilder und Videos behalten das Seitenverhältnis, mit Shift frei), löschen (Entf); im Menü «…»: Spotlight, Bild bemalen, duplizieren, auf andere Seite verschieben, nach hinten legen; Doppelklick auf den Namen gibt dem Element einen eigenen Titel |
+| Module | Timer mit 5, 10, 15 Minuten oder eigener Zeit und Signalton; Uhr (analog und digital); Ampel (rot, gelb, grün); Sozialform (Einzel-, Partner-, Gruppenarbeit, Plenum); Lostopf (Lose ziehen ohne Zurücklegen, «Alle zurück in den Topf»); Gruppen nach Gruppengrösse oder Anzahl Gruppen; 1 bis 6 Würfel |
+| Link und Datei | Link als Karte, auf Wunsch mit QR-Code zum Scannen; Datei hochladen (PDF, Arbeitsblatt, Audio, …) mit Vorschau, «Öffnen» und «Herunterladen» |
+| Spotlight | Menü «…» > «Im Spotlight zeigen» oder beim Präsentieren das Symbol oben rechts an der Karte; Esc oder Klick daneben schliesst |
+| Einfügen | Bilder auch mit Ctrl+V oder Hineinziehen; Adressen und iFrame-Snippets mit Ctrl+V werden zu Webseite oder Video; Bild- und Videodateien hineinziehen, andere Dateien werden zur Datei-Karte |
+| Zeichnen (Z) | Stift, Textmarker, Radierer, neun Farben, drei Dicken, über die ganze Seite; «Zeichnung» löscht alle Zeichnungen der Seite |
 | Seiten | Seitenliste links: «+ Seite», Menü «…» zum Benennen, Duplizieren, Verschieben, Löschen; Bild auf/ab wechselt die Seite |
-| Hintergrund | pro Seite: Weiss, kariert, liniert, Punkte, Wandtafel grün, Dunkelblau, Kork |
+| Hintergrund | pro Seite: Weiss, kariert, liniert, Punkte, Wandtafel grün, Dunkelblau, Kork, oder «Eigenes Design» (Palette-Knopf): Farbe, Muster, Hintergrundbild, für eine oder alle Seiten |
 | Rückgängig | Ctrl+Z, wiederholen mit Ctrl+Y |
 | Präsentieren (P) | Vollbild ohne Werkzeuge, Pfeiltasten oder Leertaste blättern, Z zeichnen, Esc beendet |
 
@@ -99,6 +105,7 @@ die App nicht zuverlässig, weil Browser dort den Speicher einschränken; export
 | Übersicht: Fächer, Kapitel, Tafelkarten mit Vorschau | `site/index.html`, `site/js/start.js`, `site/css/start.css` |
 | Tafel: Bearbeiten, Seiten, Zeichnen, Präsentieren | `site/tafel.html`, `site/js/tafel.js`, `site/css/tafel.css` |
 | Elemente und Zeichnungen (Tafel, Vorschau, Export) | `site/js/elemente.js` |
+| QR-Codes (qrcode-generator von Kazuhiko Arase, MIT-Lizenz) | `site/js/qrcode.js` |
 | Speicher im Browser (IndexedDB) | `site/js/speicher.js` |
 | Export und Import | `site/js/export.js`, Offline-Ansicht `site/js/ansicht.js` |
 | Dialoge, Menüs, Icons | `site/js/gemeinsam.js`, `site/css/basis.css` |
@@ -126,5 +133,6 @@ Farben wie in MI_Connected3 als Variablen oben in `site/css/basis.css`.
 ```
 
 Eine Sicherung (`"art": "sammlung"`) enthält statt `tafel` die Listen `faecher` (mit `kapitel` und deren
-Tafel-IDs) und `tafeln`. Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `timer`,
-`stoppuhr`, `zufall`, `gruppen`, `wuerfel`.
+Tafel-IDs) und `tafeln`. Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `datei`, `timer`,
+`stoppuhr`, `uhr`, `ampel`, `sozialform`, `zufall` (Lostopf), `gruppen`, `wuerfel`. Eine Seite mit eigenem Design hat
+`"hintergrund": "eigen"` und dazu `hgFarbe`, `hgMuster` (`kariert`, `liniert`, `punkte`) und `hgBild` (Medium-ID).

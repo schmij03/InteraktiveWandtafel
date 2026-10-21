@@ -378,3 +378,42 @@ body.oberflaeche {
 .fehler-seite h1 {
   color: var(--dunkelblau);
 }
+
+/* Bild bemalen */
+.dialog.maler {
+  width: min(1100px, calc(100vw - 32px));
+  max-width: none;
+  padding: 20px 22px 18px;
+}
+.maler-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.maler-leiste .knopf svg {
+  width: 20px;
+  height: 20px;
+}
+.maler-leiste input[type="color"] {
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--grau);
+  border-radius: 6px;
+}
+.maler-flaeche {
+  display: grid;
+  place-items: center;
+  max-height: calc(100vh - 260px);
+  overflow: hidden;
+  background: var(--hellgrau);
+  border-radius: 8px;
+}
+.maler-flaeche canvas {
+  max-width: 100%;
+  max-height: calc(100vh - 260px);
+  touch-action: none;
+  cursor: crosshair;
+}

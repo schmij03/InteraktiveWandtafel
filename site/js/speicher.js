@@ -142,6 +142,7 @@
   function medienVon(t) {
     var ids = [];
     (t.seiten || []).forEach(function (s) {
+      if (s.hgBild && ids.indexOf(s.hgBild) === -1) ids.push(s.hgBild);
       s.elemente.forEach(function (e) {
         if (e.daten && e.daten.medium && ids.indexOf(e.daten.medium) === -1) ids.push(e.daten.medium);
       });
