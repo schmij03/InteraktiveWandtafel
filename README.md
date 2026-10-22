@@ -139,6 +139,10 @@ PowerPoint eine Lektion (Einstieg, Input, Erarbeitung, Sicherung, Abschluss) mit
 Tabellen und Lehrer-Notizen wird: Prompt zum Kopieren, vollständiges Datenformat, Checkliste und eine
 [Beispiel-Lektion](docs/beispiel-lektion.wandtafel.json) zum Importieren.
 
+Eine ganze Lektionsreihe nach diesem Muster: [02-Algorithmen](docs/lektionen/02-algorithmen-3-sek.wandtafel.json)
+für Medien und Informatik, 3. Sek (Insertionsort, Tournamentsort, Suchen, Fairness, Mergesort; 5 Tafeln). Importieren
+legt Fach, Jahr und Thema an, falls sie fehlen. Erzeugt mit `python3 tools/lektion-algorithmen.py`.
+
 ### Als App ohne Internet
 
 Nach dem ersten Besuch legt der Browser alle Dateien der Wandtafel ab. Danach startet sie auch ohne Internet,
