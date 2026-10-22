@@ -882,6 +882,28 @@ try {
   await ip.waitForSelector(".element-timer");
   pruefe((await ip.locator(".element").count()) === 5, "Beispiel-Lektion: alle Elemente der ersten Seite sichtbar");
   await foto(ip, "19-ki-lektion");
+
+  // Fertige Lektionsreihe (docs/lektionen) als Sammlung mit Jahr importieren
+  console.log("Lektionsreihe 02-Algorithmen");
+  await ip.goto(BASIS);
+  await ip.waitForSelector(".fach-eintrag");
+  await ip.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "..", "docs", "lektionen", "02-algorithmen-3-sek.wandtafel.json"));
+  await ip.waitForSelector(".jahr-knopf:has-text('3. Sek')");
+  const reihe = await ip.evaluate(() =>
+    Promise.all([window.Wandtafel.Speicher.sammlung(), window.Wandtafel.Speicher.alleTafeln()]).then(function (r) {
+      var fach = r[0].faecher.find((f) => f.name === "Medien und Informatik");
+      var jahr = fach && (fach.jahre || []).find((j) => j.name === "3. Sek");
+      var kapitel = jahr && fach.kapitel.find((k) => k.name === "02-Algorithmen" && k.jahr === jahr.id);
+      var tafeln = kapitel ? kapitel.tafeln.map((id) => r[1].find((t) => t.id === id)) : [];
+      return {
+        anzahl: tafeln.length,
+        titel: tafeln.map((t) => t && t.titel),
+        innen: tafeln.every((t) => t && t.seiten.every((s) => s.elemente.every((e) => e.x >= 0 && e.y >= 0 && e.x + e.b <= 1600 && e.y + e.h <= 900)))
+      };
+    })
+  );
+  pruefe(reihe.anzahl === 5 && reihe.titel[0] === "Lektion 1: Insertionsort" && reihe.titel[4] === "Lektion 5: Mergesort", "Lektionsreihe: 5 Tafeln in Medien und Informatik › 3. Sek › 02-Algorithmen");
+  pruefe(reihe.innen, "Lektionsreihe: alle Elemente innerhalb der Seite");
   await ik.close();
   }
 
