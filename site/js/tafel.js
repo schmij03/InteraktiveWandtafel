@@ -394,6 +394,16 @@
     }
     W.dialog({ titel: "Format: " + (d.titel || E.NAMEN[e.typ]), felder: felder, knopf: "Übernehmen" }).then(function (w) {
       if (!w) return;
+      // Mit denselben Ersatzwerten wie die Felder oben, damit nur echte Aenderungen zaehlen
+      var vorher = {
+        schrift: d.schrift,
+        groesse: d.groesse || E.standardGroesse(e.typ),
+        farbe: e.typ !== "notiz" ? d.farbe || "#1f2933" : d.farbe,
+        fett: d.fett,
+        kursiv: d.kursiv,
+        unterstrichen: d.unterstrichen,
+        ausrichtung: d.ausrichtung || (e.typ === "form" ? "center" : "left")
+      };
       if (e.typ === "form") {
         d.form = w.form;
         d.fuellung = w.ohneFuellung ? "keine" : w.fuellung;
@@ -409,6 +419,7 @@
       d.unterstrichen = w.unterstrichen;
       d.ausrichtung = w.ausrichtung;
       if (e.typ !== "tabelle") d.liste = w.liste;
+      E.formatFuerAlle(e, vorher);
       neuBauen(e);
       festhalten();
     });
