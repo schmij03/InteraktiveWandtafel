@@ -397,12 +397,12 @@
       return id;
     }
 
-    function form(name, lage, prst, fuell, rand, randDicke, text) {
+    function form(name, lage, prst, fuell, rand, randDicke, text, rundung) {
       var id = naechsteId++;
       var linie = rand && randDicke > 0 ? '<a:ln w="' + Math.round(randDicke * 9525) + '">' + fuellung(rand) + "</a:ln>" : "<a:ln><a:noFill/></a:ln>";
       return (
         '<p:sp><p:nvSpPr><p:cNvPr id="' + id + '" name="' + x(name + " " + id) + '"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>' +
-        "<p:spPr>" + xfrm(lage.x, lage.y, lage.b, lage.h) + '<a:prstGeom prst="' + prst + '"><a:avLst/></a:prstGeom>' + fuellung(fuell) + linie + "</p:spPr>" +
+        "<p:spPr>" + xfrm(lage.x, lage.y, lage.b, lage.h) + '<a:prstGeom prst="' + prst + '"><a:avLst>' + (rundung != null ? '<a:gd name="adj" fmla="val ' + Math.round(rundung * 100000) + '"/>' : "") + "</a:avLst></a:prstGeom>" + fuellung(fuell) + linie + "</p:spPr>" +
         (text || textKoerper('<a:p><a:endParaRPr lang="de-CH" dirty="0"/></a:p>')) +
         "</p:sp>"
       );
@@ -492,7 +492,7 @@
         var anker = { oben: "t", unten: "b" }[d.vertikal] || "ctr";
         var innen = [lage.h * f.innen[0] / 100, lage.b * f.innen[1] / 100, lage.h * f.innen[2] / 100, lage.b * f.innen[3] / 100];
         return Promise.resolve(
-          form("Form", lage, f.pptx, d.fuellung === "keine" ? null : farbe(d.fuellung, "D6ECFB"), farbe(d.rand, "065A82"), dicke, textKoerper(absaetze(d.text, d, "form"), anker, innen))
+          form("Form", lage, f.pptx, d.fuellung === "keine" ? null : farbe(d.fuellung, "D6ECFB"), farbe(d.rand, "065A82"), dicke, textKoerper(absaetze(d.text, d, "form"), anker, innen), f.wert === "abgerundet" ? (d.rundung != null ? d.rundung : 0.12) : null)
         );
       }
       if (e.typ === "tabelle") return Promise.resolve(tabelle(e, { x: lage.x + 8, y: lage.y + 8, b: lage.b - 16, h: lage.h - 16 }));
