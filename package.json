@@ -7,7 +7,8 @@
   "scripts": {
     "vorschau": "node tools/vorschau.mjs",
     "pruefen": "node tools/pruefen.mjs",
-    "pruefen:praesentation": "node tools/pruefen-praesentation.mjs"
+    "pruefen:praesentation": "node tools/pruefen-praesentation.mjs",
+    "pruefen:backup": "node tools/pruefen-backup.mjs"
   },
   "engines": {
     "node": ">=20"

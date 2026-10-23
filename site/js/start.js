@@ -462,16 +462,62 @@
       .catch(fehler);
   }
 
-  function allesSichern() {
+  /** Menue am Knopf «Backup»: in OneDrive sichern, Backup laden, Ordner waehlen */
+  function backupMenue(knopf) {
+    var B = W.Backup;
+    W.menue(knopf, [
+      { text: "In OneDrive sichern", aktion: function () { backupSpeichern(false); } },
+      { text: "Backup laden …", aktion: backupLaden },
+      { trenner: true },
+      { text: "Backup als Datei herunterladen", aktion: function () { backupSpeichern(true); } },
+      B.ordnerMoeglich() && {
+        text: "Backup-Ordner wählen …",
+        aktion: function () {
+          B.ordnerWaehlen()
+            .then(function (h) {
+              if (h) W.melden("Backups gehen ab jetzt in «" + h.name + "».", 5000);
+            })
+            .catch(fehler);
+        }
+      }
+    ]);
+  }
+
+  function backupSpeichern(nurDatei) {
     if (!sammlung.faecher.length) {
       W.melden("Noch nichts zu sichern.");
       return;
     }
-    X.sammlungPaket(sammlung.faecher)
-      .then(function (p) {
-        X.jsonSpeichern(p, "Wandtafel_Sicherung");
+    W.melden("Backup wird erstellt …", 60000);
+    W.Backup.speichern(nurDatei)
+      .then(function (ergebnis) {
+        W.melden(ergebnis ? ergebnis.text : "", 5000);
+        speicherInfo();
       })
       .catch(fehler);
+  }
+
+  /** Liest das Backup aus dem gewaehlten Ordner, sonst waehlt man die Datei */
+  function backupLaden() {
+    W.Backup.ausOrdner()
+      .then(function (datei) {
+        if (datei) importDatei(datei);
+        else importStarten();
+      })
+      .catch(fehler);
+  }
+
+  /** Rueckfrage vor dem Zusammenfuehren eines Backups */
+  function backupWiederherstellen(paket) {
+    return W.dialog({
+      titel: "Backup laden",
+      text:
+        "Backup vom " + W.datumText(Date.parse(paket.exportiert)) + " mit " + mehrzahl(paket.tafeln.length, "Tafel", "Tafeln") +
+        ". Neue Tafeln kommen dazu, bei vorhandenen gilt die neuere Fassung. Auf diesem Gerät wird nichts gelöscht.",
+      knopf: "Laden"
+    }).then(function (w) {
+      return w ? W.Backup.wiederherstellen(paket) : null;
+    });
   }
 
   function importStarten(ziel) {
@@ -489,6 +535,7 @@
     X.paketLesen(datei)
       .then(function (paket) {
         gelesen = paket;
+        if (paket.art === "sammlung" && paket.sicherung && W.Backup) return backupWiederherstellen(paket);
         if (paket.art === "sammlung") return X.importieren(paket);
         if (importZiel) return X.importieren(paket, importZiel);
         // Einzelne Tafel: Kapitel waehlen (oder neues Fach anlegen)
@@ -986,14 +1033,15 @@
   }
 
   function speicherInfo() {
-    return S.platz().then(function (p) {
-      var info = document.getElementById("speicher-info");
-      if (!p || !p.usage) {
-        info.textContent = "";
-        return;
+    return Promise.all([S.platz(), W.Backup ? W.Backup.info() : null]).then(function (r) {
+      var p = r[0];
+      var teile = [];
+      if (p && p.usage) {
+        var mb = p.usage / 1024 / 1024;
+        teile.push("Belegt im Browser: " + (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB");
       }
-      var mb = p.usage / 1024 / 1024;
-      info.textContent = "Belegt im Browser: " + (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB";
+      if (r[1]) teile.push("Letztes Backup: " + W.datumText(r[1].zeit));
+      document.getElementById("speicher-info").textContent = teile.join(" · ");
     });
   }
 
@@ -1002,7 +1050,9 @@
       k.insertAdjacentHTML("afterbegin", W.icon(k.dataset.icon));
     });
     document.getElementById("fach-neu").addEventListener("click", fachAnlegen);
-    document.getElementById("sichern").addEventListener("click", allesSichern);
+    document.getElementById("sichern").addEventListener("click", function () {
+      backupMenue(this);
+    });
     document.getElementById("importieren").addEventListener("click", function () {
       importStarten();
     });

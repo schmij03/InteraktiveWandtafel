@@ -6,8 +6,10 @@
  *   tafeln    eine Tafel pro Eintrag: Titel und Seiten mit Elementen und Zeichnungen
  *   medien    hochgeladene Bilder und Videos als Blob, in den Elementen per ID verknuepft
  *
+ *   (im Bereich sammlung liegen ausserdem Einstellungen wie der Backup-Ordner)
+ *
  * Alles bleibt auf diesem Geraet und in diesem Browser. Zum Sichern und
- * Weitergeben gibt es den Export (export.js).
+ * Weitergeben gibt es den Export (export.js) und das Backup (backup.js).
  */
 (function () {
   "use strict";
@@ -107,6 +109,15 @@
 
   function sammlungSpeichern(s) {
     return schreiben("sammlung", s, "sammlung");
+  }
+
+  /** Einstellung dieses Geraets (oder null) */
+  function einstellung(name) {
+    return lesen("sammlung", "einstellung:" + name);
+  }
+
+  function einstellungSpeichern(name, wert) {
+    return schreiben("sammlung", wert, "einstellung:" + name);
   }
 
   // ---------- Tafeln ----------
@@ -212,6 +223,8 @@
     oeffnen: oeffnen,
     sammlung: sammlung,
     sammlungSpeichern: sammlungSpeichern,
+    einstellung: einstellung,
+    einstellungSpeichern: einstellungSpeichern,
     leereSeite: leereSeite,
     neueTafel: neueTafel,
     gueltigeTafel: gueltigeTafel,
