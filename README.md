@@ -135,9 +135,9 @@ Jede Folie wird eine Seite. Folien im Format 4:3 werden mittig eingepasst.
 
 | In PowerPoint | Auf der Tafel |
 |---|---|
-| Titel, Textfelder, Platzhalter | Text mit Schriftgrösse, Farbe, fett, kursiv, unterstrichen, Ausrichtung, Aufzählung oder Nummerierung (auch aus Folienmaster und Layout) |
+| Titel, Textfelder, Platzhalter | Text mit Schriftgrösse, Farbe, fett, kursiv, unterstrichen, Ausrichtung, Aufzählung oder Nummerierung (auch aus Folienmaster und Layout); Zeilen und Wörter mit eigenem Format behalten es |
 | Formen | Form (Rechteck, abgerundet, Ellipse, Dreieck, Raute, Sechseck, Pfeil, Stern, Sprechblase; andere werden zur ähnlichsten) mit Füllung, Rand und Text |
-| Bilder, Tabellen | Bild (im Browser gespeichert), Tabelle mit Kopfzeile |
+| Bilder, Tabellen | Bild (im Browser gespeichert), Tabelle mit Kopfzeile, Zellfarben, Fettdruck und Streifen (auch aus dem Tabellenstil) |
 | Linien und Verbinder | Zeichnung |
 | Videos | Videodatei, YouTube oder Vimeo |
 | Gruppen | einzelne Elemente |
@@ -242,3 +242,9 @@ Dazu kommen aus den PowerPoint-Funktionen: an der Seite `notizen`, `uebergang` (
 Notiz und Form `schrift`, `kursiv`, `unterstrichen`, `liste` (`punkte`, `nummern`) und `platzhalter`; eine Form hat
 `form`, `fuellung` (Farbe oder `keine`), `rand`, `randDicke` und `vertikal`; eine Tabelle `zellen` (Zeilen mit Texten)
 und `kopf`. Ältere Tafeln ohne diese Angaben funktionieren unverändert.
+
+Text, Notiz und Form können zusätzlich `laeufe` haben: Stellen mit eigenem Format, zum Beispiel
+`[{ "t": "Titel\n" }, { "t": "klein", "groesse": 24, "fett": false, "farbe": "#065a82" }]`. Jeder Lauf nennt nur, was
+vom Format des ganzen Elements abweicht (`fett`, `kursiv`, `unterstrichen`, `farbe`, `groesse`, `schrift`); alle `t`
+zusammen ergeben genau `text`, sonst gilt der Text ohne diese Formate. Eine Tabelle kann `stile` haben, gleich
+aufgebaut wie `zellen`, mit `null` oder `{ "fuellung", "farbe", "fett", "kursiv", "unterstrichen", "ausrichtung" }` pro Zelle.

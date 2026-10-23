@@ -157,21 +157,162 @@
     feld.classList.toggle("liste-nummern", d.liste === "nummern");
   }
 
+  // ---------- Formatierter Text ----------
+  // daten.laeufe: [{ t, fett, kursiv, unterstrichen, farbe, groesse, schrift }], nur mit den
+  // Abweichungen vom Format des ganzen Elements. Zusammen ergeben die t genau daten.text;
+  // sonst (Text anderswo geaendert) gelten sie nicht.
+
+  var LAUF_STIL = ["fett", "kursiv", "unterstrichen", "farbe", "groesse", "schrift"];
+
+  function laeufeVon(d) {
+    var l = d.laeufe;
+    if (!Array.isArray(l) || !l.length) return null;
+    var ganz = l
+      .map(function (x) {
+        return x && typeof x.t === "string" ? x.t : "";
+      })
+      .join("");
+    return ganz === String(d.text || "") ? l : null;
+  }
+
+  function laufFormat(lauf) {
+    var f = {};
+    LAUF_STIL.forEach(function (k) {
+      if (lauf[k] != null && lauf[k] !== "") f[k] = lauf[k];
+    });
+    return f;
+  }
+
+  /** Ein Stueck Text, mit Format als Span (das Format steht auch in data-lauf) */
+  function laufKnoten(text, lauf) {
+    var f = laufFormat(lauf);
+    if (!Object.keys(f).length) return document.createTextNode(text);
+    var s = el("span", null, text);
+    s.dataset.lauf = JSON.stringify(f);
+    if (f.fett != null) s.style.fontWeight = f.fett ? "700" : "400";
+    if (f.kursiv != null) s.style.fontStyle = f.kursiv ? "italic" : "normal";
+    if (f.unterstrichen != null) s.style.textDecoration = f.unterstrichen ? "underline" : "none";
+    if (f.farbe) s.style.color = f.farbe;
+    if (f.groesse) s.style.fontSize = f.groesse + "px";
+    if (f.schrift) s.style.fontFamily = schriftVon(f.schrift).css;
+    return s;
+  }
+
+  /**
+   * Nach dem Format-Dialog: Was dort geaendert wurde, gilt fuer das ganze Feld. Stellen und
+   * Zellen mit eigenem Format uebernehmen es (Grössen im gleichen Verhaeltnis).
+   */
+  function formatFuerAlle(e, vorher) {
+    var d = e.daten;
+    var geaendert = Object.keys(vorher).filter(function (k) {
+      return String(vorher[k] || "") !== String(d[k] || "");
+    });
+    var l = laeufeVon(d);
+    if (l) {
+      l.forEach(function (x) {
+        geaendert.forEach(function (k) {
+          if (k === "groesse" && x.groesse) x.groesse = Math.max(8, Math.round((x.groesse * d.groesse) / vorher.groesse));
+          else if (k !== "groesse") delete x[k];
+        });
+      });
+      if (!l.some(function (x) { return Object.keys(laufFormat(x)).length; })) delete d.laeufe;
+    }
+    (d.stile || []).forEach(function (zeile) {
+      (zeile || []).forEach(function (st) {
+        if (!st) return;
+        geaendert.forEach(function (k) {
+          if (["farbe", "fett", "kursiv", "unterstrichen", "ausrichtung"].indexOf(k) !== -1) st[k] = d[k];
+        });
+      });
+    });
+  }
+
+  /** Format einer Tabellenzelle: { fuellung, farbe, fett, kursiv, unterstrichen, ausrichtung } */
+  function zellStil(zelle, st) {
+    if (!st) return;
+    if (st.fuellung) zelle.style.background = st.fuellung;
+    if (st.farbe) zelle.style.color = st.farbe;
+    if (st.fett != null) zelle.style.fontWeight = st.fett ? "700" : "400";
+    if (st.kursiv) zelle.style.fontStyle = "italic";
+    if (st.unterstrichen) zelle.style.textDecoration = "underline";
+    if (st.ausrichtung) zelle.style.textAlign = st.ausrichtung;
+  }
+
   /** Text einsetzen; bei Listen jede Zeile als eigener Absatz */
-  function textSetzen(feld, text, liste) {
+  function textSetzen(feld, d) {
     feld.textContent = "";
+    var text = String(d.text || "");
     if (!text) return;
-    if (!liste) {
+    var laeufe = laeufeVon(d);
+    if (!laeufe && !d.liste) {
       feld.textContent = text;
       return;
     }
-    String(text)
-      .split("\n")
-      .forEach(function (zeile) {
-        var absatz = el("div", null, zeile);
-        if (!zeile) absatz.appendChild(el("br"));
-        feld.appendChild(absatz);
+    var zeilen = [[]];
+    (laeufe || [{ t: text }]).forEach(function (lauf) {
+      lauf.t.split("\n").forEach(function (stueck, i) {
+        if (i) zeilen.push([]);
+        if (stueck) zeilen[zeilen.length - 1].push(laufKnoten(stueck, lauf));
       });
+    });
+    // Jede Zeile als Absatz; eine Zeile nur mit kleinerer Schrift bekommt auch die kleinere Zeilenhoehe
+    zeilen.forEach(function (teile) {
+      var absatz = el("div");
+      if (!teile.length) absatz.appendChild(el("br"));
+      var groessen = teile.map(function (k) {
+        return k.style ? parseFloat(k.style.fontSize) : NaN;
+      });
+      if (teile.length && groessen.every(isFinite)) absatz.style.fontSize = Math.min.apply(null, groessen) + "px";
+      teile.forEach(function (k) {
+        absatz.appendChild(k);
+      });
+      feld.appendChild(absatz);
+    });
+  }
+
+  /** Nach dem Schreiben: das Format jedes Zeichens aus den Spans zuruecklesen */
+  function laeufeLesen(feld, text) {
+    var folge = [];
+    var gang = document.createTreeWalker(feld, NodeFilter.SHOW_TEXT);
+    for (var n = gang.nextNode(); n; n = gang.nextNode()) {
+      var span = n.parentNode.closest("[data-lauf]");
+      var f = span && feld.contains(span) ? span.dataset.lauf : "";
+      for (var i = 0; i < n.data.length; i++) folge.push({ z: n.data[i], f: f });
+    }
+    // Leerzeichen und geschuetzte Leerzeichen gelten als gleich, Zeilenumbrueche nur untereinander
+    var leer = /[^\S\n]/;
+    var laeufe = [];
+    var pos = 0;
+    var vorher = "";
+    for (var j = 0; j < text.length; j++) {
+      var z = text[j];
+      // Zeilenumbrueche fehlen in Listen zwischen den Absaetzen, sie gehoeren zum Text davor
+      for (var k = pos; k < Math.min(folge.length, pos + 4); k++) {
+        if (folge[k].z === z || (leer.test(folge[k].z) && leer.test(z))) {
+          if (z !== "\n") vorher = folge[k].f;
+          pos = k + 1;
+          break;
+        }
+      }
+      var letzter = laeufe[laeufe.length - 1];
+      if (letzter && letzter.f === vorher) letzter.t += z;
+      else laeufe.push({ t: z, f: vorher });
+    }
+    if (!laeufe.some(function (l) { return l.f; })) return null;
+    return laeufe.map(function (l) {
+      var lauf = l.f ? JSON.parse(l.f) : {};
+      lauf.t = l.t;
+      return lauf;
+    });
+  }
+
+  /** Format fuer das ganze Feld geaendert: die Stellen mit eigenem Format anpassen */
+  function laeufeAnpassen(e, feld, arbeit) {
+    var l = laeufeVon(e.daten);
+    if (!l) return;
+    l.forEach(arbeit);
+    if (!l.some(function (x) { return Object.keys(laufFormat(x)).length; })) delete e.daten.laeufe;
+    textSetzen(feld, e.daten);
   }
 
   /**
@@ -542,11 +683,11 @@
     else teile.koerper.appendChild(el("p", "platzhalter-text", "Unbekanntes Element: " + e.typ));
   }
 
-  /** Bearbeitbarer Text (nur reiner Text, kein HTML) */
+  /** Bearbeitbarer Text (reiner Text, eigenes Format einzelner Stellen in Spans) */
   function textFeld(e, koerper, platzhalterText, kontext) {
     var feld = el("div", "textfeld");
     feld.dataset.platzhalter = kontext.bearbeitbar ? platzhalterText : "";
-    textSetzen(feld, e.daten.text || "", e.daten.liste);
+    textSetzen(feld, e.daten);
     textStil(feld, e);
     if (kontext.bearbeitbar || kontext.eintragbar) {
       feld.contentEditable = "true";
@@ -561,6 +702,11 @@
         // Listen: auch die erste Zeile als Absatz, damit sie ein Aufzaehlungszeichen bekommt
         if (e.daten.liste && feld.firstChild && feld.firstChild.nodeType === 3) document.execCommand("formatBlock", false, "div");
         e.daten.text = feld.innerText.replace(/\n$/, "");
+        if (e.daten.laeufe) {
+          var laeufe = laeufeLesen(feld, e.daten.text);
+          if (laeufe) e.daten.laeufe = laeufe;
+          else delete e.daten.laeufe;
+        }
         kontext.speichern();
       });
       feld.addEventListener("blur", kontext.festhalten);
@@ -572,8 +718,13 @@
   function schriftWerkzeuge(e, werkzeuge, feld, kontext, mitFarbe) {
     if (!werkzeuge) return;
     function aendern(schritt) {
-      e.daten.groesse = begrenzen((e.daten.groesse || standardGroesse(e.typ)) + schritt, 14, 200);
+      var alt = e.daten.groesse || standardGroesse(e.typ);
+      e.daten.groesse = begrenzen(alt + schritt, 14, 200);
       feld.style.fontSize = e.daten.groesse + "px";
+      // Stellen mit eigener Grösse wachsen im gleichen Verhaeltnis mit
+      laeufeAnpassen(e, feld, function (x) {
+        if (x.groesse) x.groesse = Math.max(8, Math.round((x.groesse * e.daten.groesse) / alt));
+      });
       kontext.festhalten();
     }
     if (mitFarbe) {
@@ -581,12 +732,18 @@
         var i = TEXTFARBEN.indexOf(e.daten.farbe || TEXTFARBEN[0]);
         e.daten.farbe = TEXTFARBEN[(i + 1) % TEXTFARBEN.length];
         feld.style.color = e.daten.farbe;
+        laeufeAnpassen(e, feld, function (x) {
+          delete x.farbe;
+        });
         kontext.festhalten();
       });
     }
     werkzeug(werkzeuge, "fett", "Fett", function () {
       e.daten.fett = !e.daten.fett;
       feld.style.fontWeight = e.daten.fett ? "700" : "";
+      laeufeAnpassen(e, feld, function (x) {
+        delete x.fett;
+      });
       kontext.festhalten();
     });
     werkzeug(werkzeuge, "groesser", "Schrift grösser", function () {
@@ -1366,7 +1523,7 @@
       });
     },
 
-    // Tabelle mit bearbeitbaren Zellen
+    // Tabelle mit bearbeitbaren Zellen; d.stile (freiwillig) hat das Format jeder Zelle
     tabelle: function (e, koerper, werkzeuge, knoten, kontext) {
       var d = e.daten;
       if (!d.zellen || !d.zellen.length) d.zellen = [["", "", ""], ["", "", ""], ["", "", ""]];
@@ -1385,6 +1542,7 @@
           var tr = el("tr");
           zeile.forEach(function (wert, s) {
             var zelle = el(z === 0 && d.kopf ? "th" : "td", null, wert);
+            zellStil(zelle, d.stile && d.stile[z] && d.stile[z][s]);
             if (kontext.bearbeitbar || kontext.eintragbar) {
               zelle.contentEditable = "true";
               zelle.spellcheck = false;
@@ -1428,6 +1586,9 @@
           d.zellen.forEach(function (zeile) {
             zeile.splice(s, 1);
           });
+          (d.stile || []).forEach(function (zeile) {
+            if (zeile) zeile.splice(s, 1);
+          });
           aktiv = null;
         });
       });
@@ -1436,6 +1597,7 @@
         var z = zeileNr();
         aendern(function () {
           d.zellen.splice(z, 1);
+          if (d.stile) d.stile.splice(z, 1);
           aktiv = null;
         });
       });
@@ -1444,6 +1606,9 @@
         aendern(function () {
           d.zellen.forEach(function (zeile) {
             zeile.splice(s, 0, "");
+          });
+          (d.stile || []).forEach(function (zeile) {
+            if (zeile) zeile.splice(s, 0, null);
           });
         });
       });
@@ -1457,6 +1622,7 @@
               return "";
             })
           );
+          if (d.stile) d.stile.splice(z, 0, null);
         });
       });
     }
@@ -1613,6 +1779,8 @@
     SCHRIFTEN: SCHRIFTEN,
     schriftVon: schriftVon,
     standardGroesse: standardGroesse,
+    laeufeVon: laeufeVon,
+    formatFuerAlle: formatFuerAlle,
     EFFEKTE: EFFEKTE,
     UEBERGAENGE: UEBERGAENGE,
     animationen: animationen,

@@ -4,10 +4,11 @@
  * Eine .pptx-Datei ist ein ZIP-Archiv mit XML-Teilen (Office Open XML); entpackt
  * wird mit DecompressionStream des Browsers. Jede Folie wird eine Seite, Folien
  * im Format 4:3 werden mittig eingepasst:
- *   Titel, Textfelder        Text mit Schrift, Grösse, Farbe, Stil, Ausrichtung, Aufzählung
+ *   Titel, Textfelder        Text mit Schrift, Grösse, Farbe, Stil, Ausrichtung, Aufzählung;
+ *                            Zeilen und Wörter mit anderem Format als Läufe
  *   Formen mit Füllung       Form (die ähnlichste Wandtafel-Form) mit Text
  *   Bilder                   Bild (im Browser gespeichert)
- *   Tabellen                 Tabelle
+ *   Tabellen                 Tabelle mit Zellfarben und Fettdruck (auch aus dem Tabellenstil)
  *   Linien und Verbinder     Zeichnung
  *   Videos                   Video (Datei, YouTube, Vimeo), andere Adressen als Link
  *   Gruppen                  aufgelöst in einzelne Elemente
@@ -293,30 +294,55 @@
     };
   }
 
+  var LAUF_STIL = ["fett", "kursiv", "unterstrichen", "farbe", "groesse", "schrift"];
+
   /**
    * Text eines txBody mit dem vorherrschenden Format:
-   * { text, groesse (pt), fett, kursiv, unterstrichen, farbe, schrift, ausrichtung, liste }
+   * { text, groesse (pt), fett, kursiv, unterstrichen, farbe, schrift, ausrichtung, liste, laeufe }
+   * laeufe hat die Stellen mit anderem Format (Grösse in pt), oder fehlt.
    */
   function textLesen(txBody, lokal, allgemein, farben, ersatzFarbe) {
     var kette = lokal.concat(allgemein);
     if (!txBody) return null;
     var skala = zahl(kind(txBody, "bodyPr", "normAutofit"), "fontScale", 100000) / 100000;
+    // Die Schriftfarbe aus dem Formstil gilt vor den allgemeinen Vorgaben
+    var holeFarbe = function (k) {
+      var f = kind(k, "solidFill");
+      return f ? farbeLesen(f, farben) || undefined : undefined;
+    };
+    function stilVon(r, absatz, stufe) {
+      var farbe = laufStil(r, absatz, stufe, lokal, holeFarbe) || ersatzFarbe || laufStil(null, absatz, stufe, allgemein, holeFarbe);
+      var latin = laufStil(r, absatz, stufe, kette, function (k) {
+        var l = kind(k, "latin");
+        return l ? l.getAttribute("typeface") || undefined : undefined;
+      });
+      return {
+        groesse: (parseFloat(laufStil(r, absatz, stufe, kette, attr("sz"))) || 1800) / 100 * skala,
+        fett: /^(1|true)$/.test(laufStil(r, absatz, stufe, kette, attr("b")) || ""),
+        kursiv: /^(1|true)$/.test(laufStil(r, absatz, stufe, kette, attr("i")) || ""),
+        unterstrichen: !!(laufStil(r, absatz, stufe, kette, attr("u")) || "none").replace("none", ""),
+        farbe: farbe || farben.text,
+        schrift: schriftWert(latin, farben)
+      };
+    }
     var zeilen = [];
-    var stile = [];
     var mitListe = 0;
     var mitNummern = 0;
     kinder(txBody, "p").forEach(function (absatz) {
       var pPr = kind(absatz, "pPr");
       var stufe = zahl(pPr, "lvl", 0);
-      var text = "";
-      var erster = null;
+      var stuecke = [];
       kinder(absatz).forEach(function (t) {
         if (t.localName === "r" || t.localName === "fld") {
           var inhalt = (kind(t, "t") || {}).textContent || "";
-          if (!erster && inhalt.trim()) erster = kind(t, "rPr") || t.ownerDocument.createElement("rPr");
-          text += inhalt;
-        } else if (t.localName === "br") text += " ";
+          if (inhalt) stuecke.push({ t: inhalt, stil: stilVon(kind(t, "rPr"), absatz, stufe) });
+        } else if (t.localName === "br") stuecke.push({ t: " ", stil: null });
       });
+      var text = stuecke
+        .map(function (st) {
+          return st.t;
+        })
+        .join("");
       var liste = "";
       if (text.trim()) {
         var aufz = stilSuchen(absatz, stufe, kette, function (p) {
@@ -329,55 +355,81 @@
         if (liste) mitListe++;
         if (liste === "nummern") mitNummern++;
       }
-      zeilen.push({ text: text, stufe: stufe, liste: liste });
-      if (!erster) return;
-      var r = erster;
-      // Die Schriftfarbe aus dem Formstil gilt vor den allgemeinen Vorgaben
-      var holeFarbe = function (k) {
-        var f = kind(k, "solidFill");
-        return f ? farbeLesen(f, farben) || undefined : undefined;
-      };
-      var farbe = laufStil(r, absatz, stufe, lokal, holeFarbe) || ersatzFarbe || laufStil(null, absatz, stufe, allgemein, holeFarbe);
-      var latin = laufStil(r, absatz, stufe, kette, function (k) {
-        var l = kind(k, "latin");
-        return l ? l.getAttribute("typeface") || undefined : undefined;
-      });
-      stile.push({
-        laenge: text.length,
-        groesse: (parseFloat(laufStil(r, absatz, stufe, kette, attr("sz"))) || 1800) / 100 * skala,
-        fett: /^(1|true)$/.test(laufStil(r, absatz, stufe, kette, attr("b")) || ""),
-        kursiv: /^(1|true)$/.test(laufStil(r, absatz, stufe, kette, attr("i")) || ""),
-        unterstrichen: !!(laufStil(r, absatz, stufe, kette, attr("u")) || "none").replace("none", ""),
-        farbe: farbe || farben.text,
-        schrift: schriftWert(latin, farben),
-        ausrichtung: { ctr: "center", r: "right", just: "justify", dist: "justify" }[stilSuchen(absatz, stufe, kette, attr("algn"))] || ""
-      });
+      var ausrichtung = { ctr: "center", r: "right", just: "justify", dist: "justify" }[stilSuchen(absatz, stufe, kette, attr("algn"))] || "";
+      zeilen.push({ text: text, stufe: stufe, liste: liste, stuecke: stuecke, ausrichtung: ausrichtung });
     });
     while (zeilen.length && !zeilen[zeilen.length - 1].text.trim()) zeilen.pop();
     while (zeilen.length && !zeilen[0].text.trim()) zeilen.shift();
-    if (!zeilen.length || !stile.length) return null;
-    // Die Schriftgrösse mit dem meisten Text gilt für das ganze Element, das Format vom ersten Absatz damit
-    var summe = {};
-    stile.forEach(function (st) {
-      summe[st.groesse] = (summe[st.groesse] || 0) + st.laenge;
+    // Das Format und die Ausrichtung mit dem meisten Text gelten für das ganze Element
+    var nachStil = {};
+    var nachAusrichtung = {};
+    zeilen.forEach(function (z) {
+      z.stuecke.forEach(function (st) {
+        if (!st.stil || !st.t.trim()) return;
+        var k = JSON.stringify(st.stil);
+        nachStil[k] = (nachStil[k] || 0) + st.t.length;
+        nachAusrichtung[z.ausrichtung] = (nachAusrichtung[z.ausrichtung] || 0) + st.t.length;
+      });
     });
-    var haupt = stile.reduce(function (a, b) {
-      return summe[b.groesse] > summe[a.groesse] ? b : a;
-    });
+    var meiste = function (zaehler) {
+      return Object.keys(zaehler).reduce(function (a, b) {
+        return a === null || zaehler[b] > zaehler[a] ? b : a;
+      }, null);
+    };
+    var hauptStil = meiste(nachStil);
+    if (hauptStil === null) return null;
+    var haupt = JSON.parse(hauptStil);
+    haupt.ausrichtung = meiste(nachAusrichtung) || "";
+
     var volleZeilen = zeilen.filter(function (z) {
       return z.text.trim();
     }).length;
     var liste = mitListe * 2 >= volleZeilen ? (mitNummern * 2 > mitListe ? "nummern" : "punkte") : "";
-    var einzug = "   ";
-    haupt.text = zeilen
-      .map(function (z) {
-        var vorne = new Array(z.stufe + 1).join(einzug);
-        // Absätze ohne Aufzählungszeichen in einer Liste behalten ihren Text, andere bekommen einen Strich
-        if (!liste && z.liste && volleZeilen > 1) vorne += "– ";
-        return vorne + z.text;
+    var einzug = "   ";
+    // Stellen mit anderem Format; Einzug, Umbrüche und Zeilenenden wie der Text davor
+    var laeufe = [];
+    var vorher = {};
+    function anhaengen(t, stil) {
+      var abw = vorher;
+      if (stil) {
+        abw = {};
+        LAUF_STIL.forEach(function (k) {
+          if (stil[k] !== haupt[k] && stil[k] != null) abw[k] = stil[k];
+        });
+        vorher = abw;
+      }
+      var letzter = laeufe[laeufe.length - 1];
+      if (letzter && JSON.stringify(letzter.abw) === JSON.stringify(abw)) letzter.t += t;
+      else laeufe.push({ t: t, abw: abw });
+    }
+    zeilen.forEach(function (z, i) {
+      if (i) anhaengen("\n", null);
+      var vorne = new Array(z.stufe + 1).join(einzug);
+      // Absätze ohne Aufzählungszeichen in einer Liste behalten ihren Text, andere bekommen einen Strich
+      if (!liste && z.liste && volleZeilen > 1) vorne += "– ";
+      var erster = z.stuecke.filter(function (st) {
+        return st.stil;
+      })[0];
+      if (vorne) anhaengen(vorne, erster ? erster.stil : null);
+      z.stuecke.forEach(function (st) {
+        anhaengen(st.t, st.stil);
+      });
+    });
+    haupt.text = laeufe
+      .map(function (l) {
+        return l.t;
       })
-      .join("\n");
+      .join("");
     haupt.liste = liste;
+    if (laeufe.some(function (l) { return Object.keys(l.abw).length; })) {
+      haupt.laeufe = laeufe.map(function (l) {
+        var lauf = { t: l.t };
+        Object.keys(l.abw).forEach(function (k) {
+          lauf[k] = l.abw[k];
+        });
+        return lauf;
+      });
+    }
     return haupt;
   }
 
@@ -398,6 +450,76 @@
   function formWert(prst) {
     if (/^star\d+$/.test(prst)) return "stern";
     return FORM_NACH_PRST[prst] || "rechteck";
+  }
+
+  // ---------- Tabellen ----------
+
+  // Der Standard-Tabellenstil von PowerPoint («Mittlere Formatvorlage 2 - Akzent 1»). Er steht
+  // oft nicht in ppt/tableStyles.xml, weil PowerPoint ihn kennt.
+  var STANDARD_TABELLE =
+    '<a:tblStyle xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" styleId="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}">' +
+    '<a:wholeTbl><a:tcTxStyle><a:fontRef idx="minor"/><a:schemeClr val="dk1"/></a:tcTxStyle><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"><a:tint val="20000"/></a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:wholeTbl>' +
+    '<a:band1H><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"><a:tint val="40000"/></a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:band1H>' +
+    '<a:band1V><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"><a:tint val="40000"/></a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:band1V>' +
+    '<a:lastCol><a:tcTxStyle b="on"><a:fontRef idx="minor"/><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:fill></a:tcStyle></a:lastCol>' +
+    '<a:firstCol><a:tcTxStyle b="on"><a:fontRef idx="minor"/><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:fill></a:tcStyle></a:firstCol>' +
+    '<a:lastRow><a:tcTxStyle b="on"><a:fontRef idx="minor"/><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:fill></a:tcStyle></a:lastRow>' +
+    '<a:firstRow><a:tcTxStyle b="on"><a:fontRef idx="minor"/><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:fill></a:tcStyle></a:firstRow>' +
+    "</a:tblStyle>";
+
+  /** Teile eines Tabellenstils, die für eine Zelle gelten, vom schwächsten zum stärksten */
+  function tabellenTeile(tblPr, z, s, zeilen, spalten) {
+    var an = function (n) {
+      return /^(1|true)$/.test((tblPr && tblPr.getAttribute(n)) || "");
+    };
+    var teile = ["wholeTbl"];
+    if (an("bandCol")) teile.push((s - (an("firstCol") ? 1 : 0)) % 2 ? "band2V" : "band1V");
+    if (an("bandRow")) teile.push((z - (an("firstRow") ? 1 : 0)) % 2 ? "band2H" : "band1H");
+    if (an("lastCol") && s === spalten - 1) teile.push("lastCol");
+    if (an("firstCol") && s === 0) teile.push("firstCol");
+    if (an("lastRow") && z === zeilen - 1) teile.push("lastRow");
+    if (an("firstRow") && z === 0) teile.push("firstRow");
+    return teile;
+  }
+
+  /** Format einer Zelle: aus dem Tabellenstil, dann direkt an der Zelle und ihrem Text */
+  function zellStilLesen(tc, vorlage, teile, farben) {
+    var st = {};
+    teile.forEach(function (name) {
+      var teil = kind(vorlage, name);
+      if (!teil) return;
+      var tx = kind(teil, "tcTxStyle");
+      if (tx) {
+        if (tx.getAttribute("b")) st.fett = tx.getAttribute("b") === "on";
+        if (tx.getAttribute("i")) st.kursiv = tx.getAttribute("i") === "on";
+        var farbKind = kinder(tx).filter(function (k) {
+          return /Clr$/.test(k.localName);
+        })[0];
+        var farbe = farbKind ? farbeLesen({ firstElementChild: farbKind }, farben) : null;
+        if (farbe) st.farbe = farbe;
+      }
+      var fuellung = fuellungLesen(kind(teil, "tcStyle", "fill"), farben);
+      if (fuellung === undefined && kind(teil, "tcStyle", "fillRef")) fuellung = farbeLesen(kind(teil, "tcStyle", "fillRef"), farben);
+      if (fuellung === null) st.fuellung = "transparent";
+      else if (fuellung && !fuellung.bild) st.fuellung = fuellung;
+    });
+    var direkt = fuellungLesen(kind(tc, "tcPr"), farben);
+    if (direkt === null) st.fuellung = "transparent";
+    else if (direkt && !direkt.bild) st.fuellung = direkt;
+    var lauf = alle(tc, "r").filter(function (r) {
+      return ((kind(r, "t") || {}).textContent || "").trim();
+    })[0];
+    var rPr = kind(lauf, "rPr");
+    if (rPr) {
+      if (rPr.getAttribute("b")) st.fett = /^(1|true)$/.test(rPr.getAttribute("b"));
+      if (rPr.getAttribute("i")) st.kursiv = /^(1|true)$/.test(rPr.getAttribute("i"));
+      if (rPr.getAttribute("u") && rPr.getAttribute("u") !== "none") st.unterstrichen = true;
+      var eigen = farbeLesen(kind(rPr, "solidFill"), farben);
+      if (eigen) st.farbe = eigen;
+    }
+    var algn = { ctr: "center", r: "right", just: "justify", dist: "justify" }[(kind(tc, "txBody", "p", "pPr") || { getAttribute: function () {} }).getAttribute("algn")];
+    if (algn) st.ausrichtung = algn;
+    return st;
   }
 
   var EFFEKT_NACH_ID = { 2: "fliegen", 12: "fliegen", 22: "wischen", 23: "zoomen", 53: "zoomen", 21: "zoomen" };
@@ -431,6 +553,7 @@
     var groesse = { cx: 12192000, cy: 6858000 };
     var basis;
     var standardText;
+    var tabellenStile = null;
 
     function fehlen(einzahl, mehrzahl) {
       var f = (fehlt[mehrzahl] = fehlt[mehrzahl] || { anzahl: 0, einzahl: einzahl });
@@ -733,6 +856,8 @@
             if (text.farbe) daten.farbe = text.farbe;
             if (text.schrift) daten.schrift = text.schrift;
             if (text.liste) daten.liste = text.liste;
+            var laeufe = laeufeUmrechnen(text.laeufe, daten.groesse);
+            if (laeufe) daten.laeufe = laeufe;
           }
           if (fuell || rand || (prst !== "rect" && prst !== "eigen")) {
             var form = formWert(prst);
@@ -751,6 +876,22 @@
           }
           if (text && text.ausrichtung) daten.ausrichtung = text.ausrichtung;
           neu("text", l, daten, id, nurDeko);
+        }
+
+        /** Grössen der Läufe von pt in Punkte der Tafel; null, wenn nichts mehr abweicht */
+        function laeufeUmrechnen(laeufe, groesse) {
+          if (!laeufe) return null;
+          var abweichung = false;
+          var liste = laeufe.map(function (l) {
+            var lauf = Object.assign({}, l);
+            if (lauf.groesse != null) {
+              lauf.groesse = Math.max(8, Math.round(lauf.groesse * EMU_PUNKT * basis.s));
+              if (lauf.groesse === groesse) delete lauf.groesse;
+            }
+            if (Object.keys(lauf).length > 1) abweichung = true;
+            return lauf;
+          });
+          return abweichung ? liste : null;
         }
 
         function bildAusPic(pic, t, quelle, nurDeko) {
@@ -815,7 +956,9 @@
           var l = lage(kind(rahmen, "xfrm"), t);
           if (/table$/.test(uri) && l) {
             var tbl = kind(daten, "tbl");
-            var zellen = kinder(tbl, "tr").map(function (tr) {
+            var tblPr = kind(tbl, "tblPr");
+            var reihen = kinder(tbl, "tr");
+            var zellen = reihen.map(function (tr) {
               return kinder(tr, "tc").map(function (tc) {
                 return kinder(kind(tc, "txBody"), "p")
                   .map(function (p) {
@@ -825,7 +968,7 @@
                       })
                       .join("");
                   })
-                  .join(" ")
+                  .join("\n")
                   .trim();
               });
             });
@@ -839,9 +982,45 @@
             })[0];
             var tdaten = {
               zellen: zellen,
-              kopf: zahl(kind(tbl, "tblPr"), "firstRow", 0) === 1,
+              kopf: zahl(tblPr, "firstRow", 0) === 1,
               groesse: Math.max(10, Math.round(zahl(erste, "sz", 1800) / 100 * EMU_PUNKT * basis.s))
             };
+            // Farben und Fettdruck: aus dem Tabellenstil und direkt an den Zellen
+            var stilId = ((kind(tblPr, "tableStyleId") || {}).textContent || "").trim();
+            var vorlage = kinder(tabellenStile, "tblStyle").filter(function (t) {
+              return t.getAttribute("styleId") === stilId;
+            })[0];
+            if (!vorlage && stilId === "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}") vorlage = new DOMParser().parseFromString(STANDARD_TABELLE, "application/xml").documentElement;
+            var mitFormat = false;
+            var stile = reihen.map(function (tr, z) {
+              return zellen[z].map(function (wert, s) {
+                var tc = kinder(tr, "tc")[s];
+                if (!tc) return null;
+                var st = zellStilLesen(tc, vorlage, tabellenTeile(tblPr, z, s, reihen.length, spalten), farben);
+                if (!Object.keys(st).length) return null;
+                mitFormat = true;
+                return st;
+              });
+            });
+            if (mitFormat) {
+              // Ohne eigene Füllung auch keine Streifen der Wandtafel, damit es wie in PowerPoint aussieht
+              var flaechig = stile.some(function (zeile) {
+                return zeile.some(function (st) {
+                  return st && st.fuellung;
+                });
+              });
+              if (flaechig) {
+                stile = stile.map(function (zeile) {
+                  return zeile.map(function (st) {
+                    st = st || {};
+                    if (!st.fuellung) st.fuellung = "transparent";
+                    if (!st.farbe) st.farbe = farben.text || "#1f2933";
+                    return st;
+                  });
+                });
+              }
+              tdaten.stile = stile;
+            }
             // Die Tabelle der Wandtafel hat innen 8 Punkte Rand
             neu("tabelle", { x: l.x - 8, y: l.y - 8, b: l.b + 16, h: l.h + 16 }, tdaten, zahl(kind(rahmen, "nvGraphicFramePr", "cNvPr"), "id", null), false);
           } else if (/chart/.test(uri)) fehlen("Diagramm", "Diagramme");
@@ -900,6 +1079,14 @@
         var sz = kind(wurzel, "sldSz");
         if (sz) groesse = { cx: zahl(sz, "cx", groesse.cx), cy: zahl(sz, "cy", groesse.cy) };
         standardText = kind(wurzel, "defaultTextStyle");
+        var stilRel = relVomTyp(praesentation, "tableStyles");
+        return (stilRel ? teil(stilRel.ziel) : Promise.resolve(null)).then(function (t) {
+          tabellenStile = t && t.wurzel;
+          return r;
+        });
+      })
+      .then(function (r) {
+        var wurzel = praesentation.wurzel;
         var titel = r[1].wurzel ? (alle(r[1].wurzel, "title")[0] || {}).textContent : "";
         var folien = kinder(kind(wurzel, "sldIdLst"), "sldId")
           .map(function (s) {

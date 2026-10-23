@@ -128,10 +128,10 @@ Vorgehen:
 
 | `typ` | Zweck | `daten` | Gute Grösse (b × h) |
 |---|---|---|---|
-| `text` | Titel, Fliesstext, Aufzählung | `text`, `groesse` (Punkte, 24–80), `fett`, `kursiv`, `unterstrichen`, `farbe`, `schrift` (`serif`, `schreib`, `mono` oder weglassen), `ausrichtung` (`center`, `right`, `justify`), `liste` (`punkte`, `nummern`: jede Zeile ein Punkt) | Titel 1440 × 110, Text 700 × 300 |
+| `text` | Titel, Fliesstext, Aufzählung | `text`, `groesse` (Punkte, 24–80), `fett`, `kursiv`, `unterstrichen`, `farbe`, `schrift` (`serif`, `schreib`, `mono` oder weglassen), `ausrichtung` (`center`, `right`, `justify`), `liste` (`punkte`, `nummern`: jede Zeile ein Punkt); freiwillig `laeufe` für einzelne Wörter oder Zeilen mit anderem Format (siehe unten) | Titel 1440 × 110, Text 700 × 300 |
 | `notiz` | Haftnotiz, Impuls, Merksatz | `text`, `groesse`, `farbe`: `#fff3a8` gelb, `#ffd6e0` rosa, `#d4f1d6` grün, `#d6ecfb` blau, `#ffe1c2` orange | 560 × 300 |
 | `form` | Form mit Text (Begriffe, Ablauf, Hervorhebung) | `form`: `rechteck`, `abgerundet`, `ellipse`, `dreieck`, `raute`, `sechseck`, `pfeil`, `stern`, `sprechblase`; `text`, `groesse`, `fett`, `farbe`, `fuellung` (Farbe oder `keine`), `rand`, `randDicke` (0–12), `vertikal` (`oben`, `mitte`, `unten`) | 330 × 240 |
-| `tabelle` | Tabelle zum Ausfüllen im Plenum | `zellen` (Liste von Zeilen, jede eine Liste von Texten, alle gleich lang), `kopf` (`true`: erste Zeile hervorgehoben), `groesse` | 1440 × (60 + 56 pro Zeile) |
+| `tabelle` | Tabelle zum Ausfüllen im Plenum | `zellen` (Liste von Zeilen, jede eine Liste von Texten, alle gleich lang), `kopf` (`true`: erste Zeile hervorgehoben), `groesse`; freiwillig `stile` (gleich aufgebaut wie `zellen`, pro Zelle `null` oder `{ "fuellung": "#ffe082", "fett": true }`) | 1440 × (60 + 56 pro Zeile) |
 | `bild` | Bild aus dem Internet | `src` (Adresse eines Bildes mit freier Lizenz), `name` | 480 × 380 |
 | `video` | YouTube- oder Vimeo-Video | `art` (`youtube`, `vimeo`), `id` (Video-ID), `url`, `start` (Sekunden, freiwillig), `titel` | 720 × 449 |
 | `webseite` | eingebettete Seite (LearningApps, H5P, …) | `url`, `titel` | 900 × 600 |
@@ -147,6 +147,11 @@ Vorgehen:
 
 Farben immer als `#rrggbb`. Gut lesbar: `#21295c` (Dunkelblau), `#065a82` (Petrol), `#e4572e` (Orange),
 `#2e7d32` (Grün), `#1f2933` (fast Schwarz), auf dunklem Hintergrund `#ffffff`.
+
+Gemischtes Format in einem Text (freiwillig, sonst lieber zwei Textelemente): `laeufe` ist eine Liste von
+Stücken `{ "t": "…" }`, die zusammen genau `text` ergeben. Ein Stück nennt nur, was anders ist als beim ganzen
+Element: `fett`, `kursiv`, `unterstrichen`, `farbe`, `groesse`, `schrift`. Beispiel für `"text": "Merke: Wasser verdunstet"`:
+`"laeufe": [{ "t": "Merke: ", "fett": true, "farbe": "#e4572e" }, { "t": "Wasser verdunstet" }]`.
 
 ## Von der Folie zur Lektion
 

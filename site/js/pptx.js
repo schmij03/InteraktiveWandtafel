@@ -335,24 +335,33 @@
 
   // ---------- Text ----------
 
-  /** Absaetze mit Schrift, Farbe und Stil des Elements */
+  /** Absaetze mit Schrift, Farbe und Stil des Elements, Stellen mit eigenem Format als eigene Laeufe */
   function absaetze(text, d, typ, link) {
     var groesse = Math.round((d.groesse || E.standardGroesse(typ)) * PUNKT);
-    var schrift = E.schriftVon(d.schrift).pptx;
-    var textfarbe = typ === "notiz" ? "1F2933" : farbe(d.farbe, "1F2933");
     var algn = { center: "ctr", right: "r", justify: "just" }[d.ausrichtung || (typ === "form" ? "center" : "")] || "l";
-    var rPr =
-      '<a:rPr lang="de-CH" sz="' + groesse + '"' + (d.fett ? ' b="1"' : "") + (d.kursiv ? ' i="1"' : "") + (d.unterstrichen ? ' u="sng"' : "") + ' dirty="0">' +
-      fuellung(textfarbe) + '<a:latin typeface="' + x(schrift) + '"/>' + (link ? '<a:hlinkClick r:id="' + link + '"/>' : "") + "</a:rPr>";
+    function rPr(lauf) {
+      var f = Object.assign({}, d, lauf);
+      var textfarbe = typ === "notiz" && !lauf.farbe ? "1F2933" : farbe(f.farbe, "1F2933");
+      return (
+        '<a:rPr lang="de-CH" sz="' + Math.round((f.groesse || E.standardGroesse(typ)) * PUNKT) + '"' + (f.fett ? ' b="1"' : "") + (f.kursiv ? ' i="1"' : "") + (f.unterstrichen ? ' u="sng"' : "") + ' dirty="0">' +
+        fuellung(textfarbe) + '<a:latin typeface="' + x(E.schriftVon(f.schrift).pptx) + '"/>' + (link ? '<a:hlinkClick r:id="' + link + '"/>' : "") + "</a:rPr>"
+      );
+    }
     var aufzaehlung = "";
     if (d.liste === "punkte") aufzaehlung = ' marL="' + Math.round(groesse * 160) + '" indent="-' + Math.round(groesse * 160) + '"><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr>';
     else if (d.liste === "nummern") aufzaehlung = ' marL="' + Math.round(groesse * 200) + '" indent="-' + Math.round(groesse * 200) + '"><a:buAutoNum type="arabicPeriod"/></a:pPr>';
-    return String(text || "")
-      .split("\n")
-      .map(function (zeile) {
+    var zeilen = [[]];
+    ((text === d.text && E.laeufeVon(d)) || [{ t: String(text || "") }]).forEach(function (lauf) {
+      lauf.t.split("\n").forEach(function (stueck, i) {
+        if (i) zeilen.push([]);
+        if (stueck) zeilen[zeilen.length - 1].push("<a:r>" + rPr(lauf) + "<a:t>" + x(stueck) + "</a:t></a:r>");
+      });
+    });
+    return zeilen
+      .map(function (teile) {
         var pPr = '<a:pPr algn="' + algn + '"' + (aufzaehlung || "/>");
-        if (!zeile) return "<a:p>" + pPr + '<a:endParaRPr lang="de-CH" sz="' + groesse + '" dirty="0"/></a:p>';
-        return "<a:p>" + pPr + "<a:r>" + rPr + "<a:t>" + x(zeile) + "</a:t></a:r></a:p>";
+        if (!teile.length) return "<a:p>" + pPr + '<a:endParaRPr lang="de-CH" sz="' + groesse + '" dirty="0"/></a:p>';
+        return "<a:p>" + pPr + teile.join("") + "</a:p>";
       })
       .join("");
   }
@@ -438,11 +447,18 @@
           return (
             '<a:tr h="' + zeilenHoehe + '">' +
             zeile
-              .map(function (wert) {
+              .map(function (wert, s) {
+                var eigen = (d.stile && d.stile[z] && d.stile[z][s]) || {};
+                var zellStil = Object.assign({}, stil);
+                ["fett", "kursiv", "unterstrichen", "farbe", "ausrichtung"].forEach(function (k) {
+                  if (eigen[k] != null) zellStil[k] = eigen[k];
+                });
+                var hinten = kopf ? "065A82" : z % 2 ? "FFFFFF" : "F1F6F9";
+                if (eigen.fuellung) hinten = eigen.fuellung === "transparent" ? null : farbe(eigen.fuellung, hinten);
                 return (
-                  '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>' + absaetze(wert, stil, "tabelle") + "</a:txBody><a:tcPr>" +
+                  '<a:tc><a:txBody><a:bodyPr/><a:lstStyle/>' + absaetze(wert, zellStil, "tabelle") + "</a:txBody><a:tcPr>" +
                   rand("lnL") + rand("lnR") + rand("lnT") + rand("lnB") +
-                  fuellung(kopf ? "065A82" : z % 2 ? "FFFFFF" : "F1F6F9") +
+                  fuellung(hinten) +
                   "</a:tcPr></a:tc>"
                 );
               })

@@ -837,11 +837,47 @@ try {
   pruefe(i3.elemente.filter((e) => e.typ === "form").length === 2 && i3.striche.length === 1 && i3.striche[0].farbe === "#2e7d32", "Gruppe aufgelöst, Linie als Zeichnung");
   const zusatz = textVon(i4, "Zusatz");
   pruefe(i4.ausgeblendet && zusatz && zusatz.daten.schrift === "serif" && zusatz.daten.fett && i4.elemente.some((e) => e.typ === "video" && e.daten.medium), "Ausgeblendete Folie mit Schriftart und eingebettetem Video");
+  const zl = (zusatz && zusatz.daten.laeufe) || [];
+  pruefe(
+    zusatz.daten.text === "Zusatz für Schnelle\nnur kurz" && zl.some((l) => l.t === "nur " && l.fett === false && l.groesse < zusatz.daten.groesse) && zl.some((l) => l.t === "kurz" && l.farbe === "#065a82"),
+    "Zweite Zeile und ein einzelnes Wort mit eigenem Format bleiben erhalten"
+  );
+  const ts = (tab && tab.daten.stile) || [[{}], [{}], [{}, {}, {}]];
+  pruefe(
+    ts[0][0].fuellung === "#4f81bd" && ts[0][0].farbe === "#ffffff" && ts[0][0].fett && ts[1][0].fuellung !== ts[2][0].fuellung && ts[2][2].fuellung === "#ffe082" && ts[2][2].fett,
+    "Tabelle mit Farben aus dem Tabellenstil, Streifen und eigener Zellfüllung"
+  );
   await foto(ip, "17-pptx-titelfolie");
   await ip.locator(".seite-eintrag .seite-wahl").nth(1).click();
   await ip.waitForSelector(".element-form");
   await ip.waitForTimeout(400);
   await foto(ip, "18-pptx-folie2");
+  await ip.locator(".seite-eintrag .seite-wahl").nth(2).click();
+  await ip.waitForSelector(".element-tabelle td");
+  // Zeile 3, Spalte 3 (die Kopfzeile hat th)
+  const zelle = await ip.evaluate(() => getComputedStyle(document.querySelectorAll(".element-tabelle td")[5]).backgroundColor);
+
+  // Gemischtes Format wird angezeigt und bleibt beim Weiterschreiben erhalten
+  await ip.locator(".seite-eintrag .seite-wahl").nth(3).click();
+  const zFeld = ip.locator('.element[data-id="' + zusatz.id + '"] .textfeld');
+  await zFeld.waitFor();
+  const blau = await zFeld.evaluate((f) => {
+    var s = [...f.querySelectorAll("span[data-lauf]")].find((x) => x.textContent === "kurz");
+    return s ? getComputedStyle(s).color : "";
+  });
+  await zFeld.click();
+  await zFeld.evaluate((f) => {
+    var a = window.getSelection();
+    a.selectAllChildren(f);
+    a.collapseToEnd();
+  });
+  await ip.keyboard.type("!");
+  const nachher = await ied((id) => window.WandtafelEditor.tafel().seiten[3].elemente.find((e) => e.id === id).daten, zusatz.id);
+  pruefe(
+    blau === "rgb(6, 90, 130)" && nachher.text === "Zusatz für Schnelle\nnur kurz!" && nachher.laeufe.some((l) => l.t === "kurz!" && l.farbe === "#065a82") && nachher.laeufe.some((l) => l.t === "nur " && l.fett === false),
+    "Wort in eigener Farbe angezeigt, Weiterschreiben behält das Format"
+  );
+  pruefe(zelle === "rgb(255, 224, 130)", "Zelle mit eigener Füllung angezeigt");
 
   // Rundlauf: als PowerPoint exportieren und die Datei wieder als Seiten anhängen
   await ied(() => window.WandtafelEditor.speichern());
@@ -858,6 +894,11 @@ try {
   const rListe = r2.elemente.find((e) => (e.daten.text || "").includes("Verdunstung"));
   const rStern = r2.elemente.find((e) => e.typ === "form" && e.daten.form === "stern");
   const rTab = zurueck[2].elemente.find((e) => e.typ === "tabelle");
+  const rZusatz = zurueck[3].elemente.find((e) => (e.daten.text || "").includes("Zusatz"));
+  pruefe(
+    rZusatz && (rZusatz.daten.laeufe || []).some((l) => l.t === "kurz!" && l.farbe === "#065a82" && l.fett === false) && rTab && rTab.daten.stile && rTab.daten.stile[2][2].fuellung === "#ffe082" && rTab.daten.stile[0][0].fett,
+    "Rundlauf PowerPoint: eigenes Format von Textstellen und Tabellenzellen"
+  );
   pruefe(
     rListe && rListe.daten.liste === "punkte" && Math.abs(rListe.daten.groesse - 53) <= 1 && Math.abs(rListe.x - liste.x) <= 1 && rStern && rStern.daten.fuellung === "#e4572e" &&
       rTab && Math.abs(rTab.x - tab.x) <= 1 && Math.abs(rTab.b - tab.b) <= 1 && zurueck[0].notizen === i1.notizen && zurueck[3].ausgeblendet,

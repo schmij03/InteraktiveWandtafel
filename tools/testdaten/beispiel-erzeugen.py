@@ -97,13 +97,17 @@ s2._element.append(
     )
 )
 
-# 3 Nur Titel: Tabelle, Linie, Gruppe
+# 3 Nur Titel: Tabelle (Standard-Tabellenstil), Linie, Gruppe
 s3 = prs.slides.add_slide(prs.slide_layouts[5])
 s3.shapes.title.text = "Messwerte"
 tabelle = s3.shapes.add_table(3, 3, Inches(0.5), Inches(1.8), Inches(6), Inches(1.5)).table
 for z, zeile in enumerate([["Ort", "Regen", "Sonne"], ["Bern", "1000 mm", "1700 h"], ["Lugano", "1600 mm", "2100 h"]]):
     for sp, wert in enumerate(zeile):
         tabelle.cell(z, sp).text = wert
+# Eine Zelle mit eigener Fuellung und fettem Text (der Rest kommt aus dem Tabellenstil)
+tabelle.cell(2, 2).fill.solid()
+tabelle.cell(2, 2).fill.fore_color.rgb = RGBColor(0xFF, 0xE0, 0x82)
+tabelle.cell(2, 2).text_frame.paragraphs[0].runs[0].font.bold = True
 linie = s3.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, Inches(0.5), Inches(4), Inches(9.5), Inches(4))
 linie.line.color.rgb = RGBColor(0x2E, 0x7D, 0x32)
 linie.line.width = Pt(4)
@@ -113,16 +117,25 @@ a.text_frame.text = "A"
 b = gruppe.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(4), Inches(4.5), Inches(2), Inches(2))
 b.text_frame.text = "B"
 
-# 4 Leer, ausgeblendet: Textfeld mit eigener Schrift, Diagramm, Video
+# 4 Leer, ausgeblendet: Textfeld mit eigener Schrift und gemischtem Format, Diagramm, Video
 s4 = prs.slides.add_slide(prs.slide_layouts[6])
 s4._element.set("show", "0")
-feld = s4.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9), Inches(1.2))
+feld = s4.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9), Inches(1.6))
 lauf = feld.text_frame.paragraphs[0].add_run()
 lauf.text = "Zusatz für Schnelle"
 lauf.font.name = "Georgia"
 lauf.font.size = Pt(40)
 lauf.font.bold = True
 lauf.font.color.rgb = RGBColor(0xB3, 0x26, 0x1E)
+# Zweite Zeile im gleichen Feld mit anderem Format, darin ein Wort in Blau
+zweite = feld.text_frame.add_paragraph()
+for text, blau in [("nur ", False), ("kurz", True)]:
+    l = zweite.add_run()
+    l.text = text
+    l.font.name = "Georgia"
+    l.font.size = Pt(20)
+    l.font.bold = False
+    l.font.color.rgb = RGBColor(0x06, 0x5A, 0x82) if blau else RGBColor(0x1F, 0x29, 0x33)
 daten = CategoryChartData()
 daten.categories = ["Jan", "Feb"]
 daten.add_series("Regen", (60, 55))
