@@ -543,10 +543,40 @@
     return a;
   }
 
-  function signal() {
+  /*
+   * iPad und iPhone (dort ist jeder Browser Safari) spielen Web Audio nur ab,
+   * wenn der AudioContext bei einem Tipp freigeschaltet wurde. Der Timer klingelt
+   * aber spaeter aus einem setTimeout, darum schaltet schon «Start» den Ton frei.
+   */
+  var tonKontext = null;
+
+  function tonBereit() {
     try {
       var Ton = window.AudioContext || window.webkitAudioContext;
-      var ton = new Ton();
+      if (!tonKontext) tonKontext = new Ton();
+      if (tonKontext.state === "suspended") tonKontext.resume();
+      // Kurzer stiller Ton: aelteres iOS schaltet erst damit frei
+      var still = tonKontext.createBufferSource();
+      still.buffer = tonKontext.createBuffer(1, 1, 22050);
+      still.connect(tonKontext.destination);
+      still.start(0);
+    } catch (e) {
+      /* ohne Ton */
+    }
+    return tonKontext;
+  }
+
+  function signal() {
+    try {
+      var ton = tonKontext || tonBereit();
+      if (ton.state === "suspended") ton.resume();
+      // Sonst schweigt Web Audio, wenn das iPad auf lautlos steht (iOS 17+)
+      if (navigator.audioSession) {
+        navigator.audioSession.type = "playback";
+        setTimeout(function () {
+          navigator.audioSession.type = "auto";
+        }, 1500);
+      }
       [0, 0.35, 0.7].forEach(function (t) {
         var osz = ton.createOscillator();
         var laut = ton.createGain();
@@ -1003,6 +1033,7 @@
           return;
         }
         if (z.rest <= 0) z.rest = e.daten.sekunden;
+        tonBereit();
         z.ende = Date.now() + z.rest * 1000;
         z.wecker = setTimeout(function () {
           z.ende = 0;
