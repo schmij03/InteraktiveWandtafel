@@ -393,6 +393,83 @@
     if (erster) erster.focus();
   }
 
+  // ---------- Vollbild ----------
+  // Echtes Vollbild, wo der Browser es kann (auch mit webkit-Vorsilbe, aeltere iPads).
+  // Sonst (iPhone, iPad als installierte Web-App, abgelehnt) ein Pseudo-Vollbild:
+  // Klasse «pseudo-vollbild» am html, die Flaeche liegt fest ueber dem ganzen Bildschirm.
+
+  var IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  function vollbildEcht() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function pseudoVollbild(an) {
+    document.documentElement.classList.toggle("pseudo-vollbild", an);
+    if (an) window.scrollTo(0, 0);
+    // Gleich wie beim echten Vollbild: Fenster neu einpassen
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  /** Vollbild ein; Promise mit true (echtes Vollbild) oder false (Pseudo-Vollbild) */
+  function vollbildAn() {
+    var d = document.documentElement;
+    if (vollbildEcht()) return Promise.resolve(true);
+    var anfordern = d.requestFullscreen || d.webkitRequestFullscreen;
+    var erlaubt = document.fullscreenEnabled !== undefined ? document.fullscreenEnabled : document.webkitFullscreenEnabled;
+    if (!anfordern || erlaubt === false) {
+      pseudoVollbild(true);
+      return Promise.resolve(false);
+    }
+    var antwort;
+    try {
+      antwort = anfordern.call(d);
+    } catch (f) {
+      antwort = Promise.reject(f);
+    }
+    // Aeltere Safari liefern kein Promise; dann am Ereignis erkennen
+    if (!antwort || !antwort.then) {
+      antwort = new Promise(function (ok, nein) {
+        setTimeout(function () {
+          if (vollbildEcht()) ok();
+          else nein();
+        }, 600);
+      });
+    }
+    return antwort.then(
+      function () {
+        pseudoVollbild(false);
+        return true;
+      },
+      function () {
+        pseudoVollbild(true);
+        return false;
+      }
+    );
+  }
+
+  function vollbildAus() {
+    pseudoVollbild(false);
+    if (!vollbildEcht()) return;
+    var aus = document.exitFullscreen || document.webkitExitFullscreen;
+    try {
+      var r = aus.call(document);
+      if (r && r.catch) r.catch(function () {});
+    } catch (f) {
+      /* schon draussen */
+    }
+  }
+
+  function vollbildAktiv() {
+    return !!vollbildEcht() || document.documentElement.classList.contains("pseudo-vollbild");
+  }
+
+  /** Meldet Wechsel des echten Vollbilds (mit und ohne Vorsilbe) */
+  function beiVollbildWechsel(arbeit) {
+    document.addEventListener("fullscreenchange", arbeit);
+    document.addEventListener("webkitfullscreenchange", arbeit);
+  }
+
   W.ICONS = ICONS;
   W.icon = icon;
   W.el = el;
@@ -412,4 +489,13 @@
   W.dialog = dialog;
   W.bestaetigen = bestaetigen;
   W.menue = menue;
+  W.IOS = IOS;
+  W.vollbild = {
+    an: vollbildAn,
+    aus: vollbildAus,
+    echt: vollbildEcht,
+    aktiv: vollbildAktiv,
+    pseudo: pseudoVollbild,
+    beiWechsel: beiVollbildWechsel
+  };
 })();

@@ -1410,6 +1410,39 @@ body.praesentieren .element.gewaehlt {
   padding-left: 14px;
 }
 
+/* Pseudo-Vollbild, wo der Browser kein echtes Vollbild kann (iPhone, iPad als Web-App):
+   die Seite liegt fest ueber dem ganzen Bildschirm und laesst sich nicht verschieben */
+html.pseudo-vollbild,
+html.pseudo-vollbild body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.pseudo-vollbild body.tafel-seite,
+html.pseudo-vollbild body.ansicht-seite {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+}
+html.pseudo-vollbild .praes-leiste {
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Beim Praesentieren eintragen: Texte, Notizen, Formen und Tabellen sind beschreibbar,
+   aber nicht verschiebbar */
+body.praesentieren .element-form .textfeld {
+  pointer-events: auto;
+  cursor: text;
+}
+body.praesentieren .element-form .koerper {
+  cursor: text;
+}
+body.praesentieren .textfeld[contenteditable="true"]:focus,
+body.praesentieren .tabelle [contenteditable="true"]:focus {
+  outline: 2px dashed rgba(6, 90, 130, 0.55);
+  outline-offset: -2px;
+}
+
 /* ---------- Exportierte Ansicht (HTML-Datei) ---------- */
 body.ansicht-seite {
   height: 100vh;
@@ -1566,7 +1599,6 @@ body.drucken {
   content: "Doppelklick für Text";
   font-size: 18px;
 }
-body.praesentieren .element-form .koerper,
 .ansicht-seite .element-form .koerper {
   cursor: default;
 }
