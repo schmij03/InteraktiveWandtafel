@@ -1044,7 +1044,8 @@ try {
     const antwort = await op.reload();
     await op.waitForSelector(".willkommen");
     pruefe(antwort.fromServiceWorker(), "Startseite laedt ohne Internet");
-    pruefe(await op.evaluate(() => document.fonts.check('16px "Carlito"') && getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)"), "Ohne Internet: Stil und Schrift vorhanden");
+    // Die Schrift laedt auch offline erst nach dem ersten Zeichnen, darauf warten
+    pruefe(await op.evaluate(async () => (await document.fonts.load('16px "Carlito"')).length > 0 && document.fonts.check('16px "Carlito"') && getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)"), "Ohne Internet: Stil und Schrift vorhanden");
 
     // Ohne Internet eine Lektion importieren und praesentieren
     await op.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "..", "docs", "beispiel-lektion.wandtafel.json"));
