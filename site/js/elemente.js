@@ -7,6 +7,7 @@
  *
  * kontext = {
  *   bearbeitbar  Texte und Einstellungen aenderbar
+ *   eintragbar   nur Texte und Tabellen ausfuellen (beim Praesentieren)
  *   druck        fuer den Druck: Webseiten und Videos als Platzhalter
  *   festhalten() Aenderung fuer Rueckgaengig festhalten und speichern
  *   speichern()  nur speichern (z. B. waehrend dem Tippen)
@@ -338,8 +339,14 @@
 
   // ---------- Hilfen ----------
 
-  var laufend = {}; // Intervalle von Timer und Stoppuhr pro Element
+  var laufend = {}; // Anzeige-Intervalle von Timer, Stoppuhr und Uhr pro Element
 
+  // Zustand von Timer und Stoppuhr pro Element. Bleibt beim Neuaufbau erhalten
+  // (Seitenwechsel, Praesentieren beenden, Vollbild verlassen); laufende Timer
+  // rechnen mit der Endzeit und melden sich auch, wenn sie gerade nicht zu sehen sind.
+  var zustand = {};
+
+  /** Haelt nur die Anzeige an; ein laufender Timer laeuft weiter */
   function stoppen(id) {
     if (laufend[id]) {
       clearInterval(laufend[id]);
@@ -349,6 +356,13 @@
 
   function alleStoppen() {
     Object.keys(laufend).forEach(stoppen);
+  }
+
+  /** Element ist weg: Anzeige und Zustand (auch den Wecker des Timers) aufgeben */
+  function vergessen(id) {
+    stoppen(id);
+    if (zustand[id]) clearTimeout(zustand[id].wecker);
+    delete zustand[id];
   }
 
   function zeitText(sekunden) {
@@ -534,7 +548,7 @@
     feld.dataset.platzhalter = kontext.bearbeitbar ? platzhalterText : "";
     textSetzen(feld, e.daten.text || "", e.daten.liste);
     textStil(feld, e);
-    if (kontext.bearbeitbar) {
+    if (kontext.bearbeitbar || kontext.eintragbar) {
       feld.contentEditable = "true";
       feld.spellcheck = false;
       feld.addEventListener("paste", function (ev) {
@@ -742,9 +756,12 @@
 
     timer: function (e, koerper, werkzeuge, knoten, kontext) {
       if (!e.daten.sekunden) e.daten.sekunden = 300;
-      var rest = e.daten.sekunden;
-      var ende = 0;
-      var anzeige = el("div", "gross-zahl", zeitText(rest));
+      // z.ende: Endzeit, solange er laeuft; sonst z.rest in Sekunden
+      var z = zustand[e.id] || (zustand[e.id] = { rest: e.daten.sekunden, ende: 0, wecker: null });
+      function rest() {
+        return z.ende ? Math.max(0, (z.ende - Date.now()) / 1000) : z.rest;
+      }
+      var anzeige = el("div", "gross-zahl", zeitText(rest()));
       var balken = el("div", "zeit-balken");
       var fuellung = el("span");
       balken.appendChild(fuellung);
@@ -788,37 +805,51 @@
       koerper.appendChild(formular);
 
       function zeichnen() {
-        anzeige.textContent = zeitText(rest);
-        fuellung.style.width = (rest / e.daten.sekunden) * 100 + "%";
-        koerper.classList.toggle("abgelaufen", rest <= 0);
+        var r = rest();
+        anzeige.textContent = zeitText(r);
+        fuellung.style.width = Math.min(1, r / e.daten.sekunden) * 100 + "%";
+        koerper.classList.toggle("abgelaufen", r <= 0);
+        start.textContent = z.ende ? "Pause" : "Start";
+      }
+      function anzeigen() {
+        stoppen(e.id);
+        if (!z.ende || kontext.druck) return;
+        laufend[e.id] = setInterval(function () {
+          // Element nicht mehr auf der Seite: nur die Anzeige anhalten
+          if (!koerper.isConnected) stoppen(e.id);
+          else zeichnen();
+        }, 200);
       }
       function anhalten() {
-        stoppen(e.id);
-        start.textContent = "Start";
+        if (z.ende) z.rest = rest();
+        z.ende = 0;
+        clearTimeout(z.wecker);
+        if (!kontext.druck) stoppen(e.id);
+        zeichnen();
       }
       start.addEventListener("click", function () {
-        if (laufend[e.id]) {
+        if (z.ende) {
           anhalten();
           return;
         }
-        if (rest <= 0) rest = e.daten.sekunden;
-        ende = Date.now() + rest * 1000;
-        start.textContent = "Pause";
-        laufend[e.id] = setInterval(function () {
-          rest = (ende - Date.now()) / 1000;
-          if (rest <= 0) {
-            rest = 0;
-            anhalten();
-            signal();
-          }
-          zeichnen();
-        }, 200);
+        if (z.rest <= 0) z.rest = e.daten.sekunden;
+        z.ende = Date.now() + z.rest * 1000;
+        z.wecker = setTimeout(function () {
+          z.ende = 0;
+          z.rest = 0;
+          signal();
+          // Die gerade sichtbare Anzeige dieses Timers nachfuehren
+          var k = document.querySelector('.element[data-id="' + e.id + '"] .koerper');
+          if (k && k.timerZeichnen) k.timerZeichnen();
+        }, z.rest * 1000);
+        anzeigen();
         zeichnen();
       });
+      if (!kontext.druck) koerper.timerZeichnen = zeichnen;
       function einstellen(sek) {
         anhalten();
         e.daten.sekunden = begrenzen(Math.round(sek), 1, 99 * 60 + 59);
-        rest = e.daten.sekunden;
+        z.rest = e.daten.sekunden;
         formular.hidden = true;
         zeichnen();
         kontext.festhalten();
@@ -837,15 +868,16 @@
       });
       neu.addEventListener("click", function () {
         anhalten();
-        rest = e.daten.sekunden;
+        z.rest = e.daten.sekunden;
         zeichnen();
       });
       zeichnen();
+      anzeigen();
     },
 
-    stoppuhr: function (e, koerper) {
-      var vorher = 0;
-      var seit = 0;
+    stoppuhr: function (e, koerper, werkzeuge, knoten, kontext) {
+      // z.seit: Startzeit, solange sie laeuft; z.vorher: schon gemessene Millisekunden
+      var z = zustand[e.id] || (zustand[e.id] = { vorher: 0, seit: 0 });
       var anzeige = el("div", "gross-zahl", "00:00.0");
       var knoepfe = el("div", "widget-knoepfe");
       var start = wKnopf("Start", true);
@@ -855,28 +887,35 @@
       koerper.appendChild(anzeige);
       koerper.appendChild(knoepfe);
       function zeichnen() {
-        var ms = vorher + (laufend[e.id] ? Date.now() - seit : 0);
+        var ms = z.vorher + (z.seit ? Date.now() - z.seit : 0);
         var s = Math.floor(ms / 1000);
         anzeige.textContent = zweistellig(Math.floor(s / 60)) + ":" + zweistellig(s % 60) + "." + Math.floor((ms % 1000) / 100);
+        start.textContent = z.seit ? "Pause" : "Start";
+      }
+      function anzeigen() {
+        stoppen(e.id);
+        if (!z.seit || kontext.druck) return;
+        laufend[e.id] = setInterval(function () {
+          if (!koerper.isConnected) stoppen(e.id);
+          else zeichnen();
+        }, 100);
       }
       start.addEventListener("click", function () {
-        if (laufend[e.id]) {
-          vorher += Date.now() - seit;
-          stoppen(e.id);
-          start.textContent = "Start";
-        } else {
-          seit = Date.now();
-          laufend[e.id] = setInterval(zeichnen, 100);
-          start.textContent = "Pause";
-        }
+        if (z.seit) {
+          z.vorher += Date.now() - z.seit;
+          z.seit = 0;
+        } else z.seit = Date.now();
+        anzeigen();
         zeichnen();
       });
       neu.addEventListener("click", function () {
-        stoppen(e.id);
-        vorher = 0;
-        start.textContent = "Start";
+        z.vorher = 0;
+        z.seit = 0;
+        anzeigen();
         zeichnen();
       });
+      zeichnen();
+      anzeigen();
     },
 
     zufall: function (e, koerper, werkzeuge, knoten, kontext) {
@@ -1159,8 +1198,8 @@
         svg.setAttribute("aria-label", "Uhrzeit " + digital.textContent);
       }
       zeichnen();
-      stoppen(e.id);
       if (kontext.druck) return;
+      stoppen(e.id);
       laufend[e.id] = setInterval(function () {
         // Element nicht mehr auf der Seite: Uhr anhalten
         if (!koerper.isConnected) stoppen(e.id);
@@ -1300,6 +1339,17 @@
       bereich.style.inset = f.innen.join("% ") + "%";
       koerper.appendChild(bereich);
       var feld = textFeld(e, bereich, "Text …", kontext);
+      if (kontext.eintragbar) {
+        // Beim Praesentieren: Antippen der Form schreibt (auch wenn sie noch leer ist)
+        koerper.addEventListener("click", function (ev) {
+          if (ev.target !== feld && !feld.contains(ev.target)) {
+            feld.focus();
+            var a = window.getSelection();
+            a.selectAllChildren(feld);
+            a.collapseToEnd();
+          }
+        });
+      }
       if (!kontext.bearbeitbar) return;
       // Erst auswaehlen und verschieben, Doppelklick schreibt
       feld.addEventListener("focus", function () {
@@ -1335,7 +1385,7 @@
           var tr = el("tr");
           zeile.forEach(function (wert, s) {
             var zelle = el(z === 0 && d.kopf ? "th" : "td", null, wert);
-            if (kontext.bearbeitbar) {
+            if (kontext.bearbeitbar || kontext.eintragbar) {
               zelle.contentEditable = "true";
               zelle.spellcheck = false;
               zelle.addEventListener("paste", function (ev) {
@@ -1548,6 +1598,7 @@
     inhaltBauen: inhaltBauen,
     stoppen: stoppen,
     alleStoppen: alleStoppen,
+    vergessen: vergessen,
     stricheZeichnen: stricheZeichnen,
     seitenTitel: seitenTitel,
     snippetUrl: snippetUrl,

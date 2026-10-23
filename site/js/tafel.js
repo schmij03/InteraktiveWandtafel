@@ -50,6 +50,7 @@
   var verlaufPos = -1;
   var animation = null; // Animationen der Seite beim Praesentieren
   var referent = null; // Fenster der Referentenansicht
+  var vollbildVerlassen = false; // Vollbild mit dem Knopf verlassen, weiter praesentieren
   var FORMATIERBAR = { text: true, notiz: true, form: true, tabelle: true };
   var KOPIE_TYP = "application/x-wandtafel-element";
 
@@ -59,6 +60,7 @@
 
   var kontext = {
     bearbeitbar: true,
+    eintragbar: false, // beim Praesentieren: Texte und Tabellen ausfuellen, nichts verschieben
     druck: false,
     festhalten: function () {
       festhalten();
@@ -223,7 +225,7 @@
   }
 
   function entfernen(id) {
-    E.stoppen(id);
+    E.vergessen(id);
     seite().elemente = seite().elemente.filter(function (e) {
       return e.id !== id;
     });
@@ -1266,13 +1268,12 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     waehlen(null);
     kontext.bearbeitbar = !an;
+    kontext.eintragbar = an;
     laserSetzen(false);
     abdecken(null);
     if (an) {
       modusSetzen("bearbeiten");
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(function () {});
-      }
+      if (!W.vollbild.aktiv()) W.vollbild.an().then(vollbildKnopf);
       // Ausgeblendete Startseite ueberspringen
       if (seite().ausgeblendet) {
         var erste = sichtbareSeite(seiteNr, 1);
@@ -1281,12 +1282,30 @@
       }
     } else {
       modusSetzen("bearbeiten");
-      if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+      W.vollbild.aus();
       if (referent && !referent.closed) referent.close();
       referent = null;
     }
     seiteZeigen();
+    vollbildKnopf();
     window.requestAnimationFrame(einpassen);
+  }
+
+  /** Vollbild waehrend der Praesentation ein- und ausschalten (bleibt praesentieren) */
+  function vollbildWechseln() {
+    if (W.vollbild.aktiv()) {
+      vollbildVerlassen = !!W.vollbild.echt();
+      W.vollbild.aus();
+    } else W.vollbild.an().then(vollbildKnopf);
+    vollbildKnopf();
+  }
+
+  function vollbildKnopf() {
+    var k = document.getElementById("p-vollbild");
+    var an = W.vollbild.aktiv();
+    k.classList.toggle("aktiv", an);
+    k.setAttribute("aria-pressed", String(an));
+    k.title = an ? "Vollbild verlassen (F)" : "Vollbild (F)";
   }
 
   // ---------- Laserpointer und abgedunkelter Bildschirm ----------
@@ -1967,6 +1986,7 @@
       laserSetzen(!laserAn);
     });
     document.getElementById("p-referent").addEventListener("click", referentOeffnen);
+    document.getElementById("p-vollbild").addEventListener("click", vollbildWechseln);
     document.getElementById("abdeckung").addEventListener("click", function () {
       abdecken(null);
     });
@@ -2073,6 +2093,7 @@
         else if (taste === "b" || ev.key === ".") abdecken("schwarz");
         else if (taste === "w" || ev.key === ",") abdecken("weiss");
         else if (taste === "r") referentOeffnen();
+        else if (taste === "f") vollbildWechseln();
         else if (ev.key === "Escape") praesentieren(false);
         else return;
         ev.preventDefault();
@@ -2110,10 +2131,17 @@
       }
     });
 
-    // Beim Verlassen des Vollbilds (Esc) auch die Praesentation beenden.
+    // Beim Verlassen des Vollbilds mit Esc auch die Praesentation beenden.
     // Nicht bei offener Referentenansicht: Chrome verlaesst das Vollbild schon beim Oeffnen des Fensters.
-    document.addEventListener("fullscreenchange", function () {
-      if (!document.fullscreenElement && praesentiert && !(referent && !referent.closed)) praesentieren(false);
+    // Auf iPad und iPhone endet das Vollbild auch durch Wischen oder die Tastatur:
+    // dort im Pseudo-Vollbild weiter praesentieren.
+    W.vollbild.beiWechsel(function () {
+      if (!W.vollbild.echt() && praesentiert && !vollbildVerlassen) {
+        if (W.IOS) W.vollbild.pseudo(true);
+        else if (!(referent && !referent.closed)) praesentieren(false);
+      }
+      vollbildVerlassen = false;
+      vollbildKnopf();
       einpassen();
     });
 

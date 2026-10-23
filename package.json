@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "vorschau": "node tools/vorschau.mjs",
-    "pruefen": "node tools/pruefen.mjs"
+    "pruefen": "node tools/pruefen.mjs",
+    "pruefen:praesentation": "node tools/pruefen-praesentation.mjs"
   },
   "engines": {
     "node": ">=20"

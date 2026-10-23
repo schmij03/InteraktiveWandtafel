@@ -129,9 +129,10 @@
     if (n !== null) zeigen(n, true);
   }
 
+  // Echtes Vollbild oder (iPhone, iPad als Web-App) Pseudo-Vollbild
   function vollbild() {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    if (W.vollbild.aktiv()) W.vollbild.aus();
+    else W.vollbild.an();
   }
 
   function praesentationAufbauen() {
@@ -169,11 +170,12 @@
       else if (ev.key === "Home") zeigen(0);
       else if (ev.key === "End") zeigen(tafel.seiten.length - 1, false);
       else if (ev.key === "f" || ev.key === "F") vollbild();
+      else if (ev.key === "Escape" && document.documentElement.classList.contains("pseudo-vollbild")) W.vollbild.aus();
       else return;
       ev.preventDefault();
     });
     window.addEventListener("resize", einpassen);
-    document.addEventListener("fullscreenchange", einpassen);
+    W.vollbild.beiWechsel(einpassen);
     var start = parseInt((location.hash || "").slice(1), 10);
     zeigen(start > 0 ? start - 1 : 0);
   }
