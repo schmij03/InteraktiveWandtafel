@@ -872,6 +872,24 @@ try {
     a.collapseToEnd();
   });
   await ip.keyboard.type("!");
+  const karte = i4.elemente.find((e) => e.typ === "form" && e.daten.form === "abgerundet");
+  const ecken = await ip.evaluate((id) => {
+    var k = document.querySelector('.element[data-id="' + id + '"]');
+    var r = k.querySelector(".form-bild rect");
+    var b = k.getBoundingClientRect();
+    return { rx: (r.getAttribute("rx") * b.width) / 100, ry: (r.getAttribute("ry") * b.height) / 100 };
+  }, karte.id);
+  const knapp = textVon(i4, "Auftrag");
+  const sichtbar = await ip.evaluate((id) => {
+    var k = document.querySelector('.element[data-id="' + id + '"]');
+    // Text beginnt oben im Feld (die Griffleiste liegt darüber, nicht im Feld)
+    var abstand = k.querySelector(".textfeld").getBoundingClientRect().top - k.getBoundingClientRect().top;
+    return getComputedStyle(k.querySelector(".koerper")).overflow + (abstand < 4 ? "" : " verschoben");
+  }, knapp.id);
+  pruefe(
+    Math.abs(karte.daten.rundung - 0.16667) < 0.001 && ecken.rx > 10 && Math.abs(ecken.rx - ecken.ry) < 1.5 && sichtbar === "visible",
+    "Breite Karte mit runden (nicht gestreckten) Ecken, knappes Textfeld wird nicht abgeschnitten"
+  );
   const nachher = await ied((id) => window.WandtafelEditor.tafel().seiten[3].elemente.find((e) => e.id === id).daten, zusatz.id);
   pruefe(
     blau === "rgb(6, 90, 130)" && nachher.text === "Zusatz für Schnelle\nnur kurz!" && nachher.laeufe.some((l) => l.t === "kurz!" && l.farbe === "#065a82") && nachher.laeufe.some((l) => l.t === "nur " && l.fett === false),
@@ -895,6 +913,8 @@ try {
   const rStern = r2.elemente.find((e) => e.typ === "form" && e.daten.form === "stern");
   const rTab = zurueck[2].elemente.find((e) => e.typ === "tabelle");
   const rZusatz = zurueck[3].elemente.find((e) => (e.daten.text || "").includes("Zusatz"));
+  const rKarte = zurueck[3].elemente.find((e) => e.typ === "form" && e.daten.form === "abgerundet");
+  pruefe(rKarte && Math.abs(rKarte.daten.rundung - 0.16667) < 0.001, "Rundlauf PowerPoint: Rundung der Ecken");
   pruefe(
     rZusatz && (rZusatz.daten.laeufe || []).some((l) => l.t === "kurz!" && l.farbe === "#065a82" && l.fett === false) && rTab && rTab.daten.stile && rTab.daten.stile[2][2].fuellung === "#ffe082" && rTab.daten.stile[0][0].fett,
     "Rundlauf PowerPoint: eigenes Format von Textstellen und Tabellenzellen"

@@ -136,6 +136,13 @@ for text, blau in [("nur ", False), ("kurz", True)]:
     l.font.size = Pt(20)
     l.font.bold = False
     l.font.color.rgb = RGBColor(0x06, 0x5A, 0x82) if blau else RGBColor(0x1F, 0x29, 0x33)
+# Breite Karte mit runden Ecken, darauf eine Ueberschrift in einem zu knappen Textfeld
+karte = s4.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.5), Inches(5.4), Inches(9), Inches(1.8))
+karte.fill.solid()
+karte.fill.fore_color.rgb = RGBColor(0xFD, 0xFB, 0xF7)
+knapp = s4.shapes.add_textbox(Inches(0.8), Inches(5.5), Inches(3), Inches(0.3))
+knapp.text_frame.text = "Auftrag"
+knapp.text_frame.paragraphs[0].runs[0].font.size = Pt(28)
 daten = CategoryChartData()
 daten.categories = ["Jan", "Feb"]
 daten.add_series("Regen", (60, 55))

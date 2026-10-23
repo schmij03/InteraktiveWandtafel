@@ -638,12 +638,10 @@ body.praesentieren .notizen-bereich {
   border-color: transparent;
   box-shadow: none;
 }
-.element-text .griff {
-  background: rgba(244, 248, 250, 0.95);
-  transition: opacity 0.15s;
-}
-.element-text:not(:hover):not(.gewaehlt) .griff {
-  opacity: 0;
+/* Wie in PowerPoint: Text, der nicht ganz in sein Feld passt, wird nicht abgeschnitten */
+.element-text .koerper,
+.element-text .textfeld {
+  overflow: visible;
 }
 .element-text:hover:not(.gewaehlt) {
   border-color: rgba(120, 140, 160, 0.5);
@@ -1526,6 +1524,8 @@ body.drucken {
   border-color: transparent;
   box-shadow: none;
 }
+/* Griffleiste oberhalb, damit der Text an seinem Platz bleibt (auch in knappen Feldern aus PowerPoint) */
+.element-text .griff,
 .element-form .griff {
   position: absolute;
   left: 0;
@@ -1538,12 +1538,15 @@ body.drucken {
   opacity: 0;
   transition: opacity 0.15s;
 }
+.element-text.griff-innen .griff,
 .element-form.griff-innen .griff {
   bottom: auto;
   top: 0;
   border-radius: 10px;
   z-index: 3;
 }
+.element-text:hover .griff,
+.element-text.gewaehlt .griff,
 .element-form:hover .griff,
 .element-form.gewaehlt .griff {
   opacity: 1;
@@ -1583,7 +1586,7 @@ body.drucken {
 }
 .element-form .textfeld {
   height: auto;
-  max-height: 100%;
+  overflow: visible;
   padding: 4px 6px;
   pointer-events: none;
   cursor: grab;
