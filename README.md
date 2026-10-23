@@ -37,7 +37,8 @@ docs/      REA-Analyse, Anleitung für KI
 
 Bei jedem Push prüft `.github/workflows/website.yml` die App im Browser. Auf dem Hauptbranch wird `site/`
 danach mit GitHub Pages veröffentlicht. Es gibt keinen Server und kein Konto: Alle Fächer, Tafeln, Bilder und
-Videos werden **im Browser** gespeichert (IndexedDB), nur auf diesem Gerät.
+Videos werden **im Browser** gespeichert (IndexedDB), nur auf diesem Gerät. Mit dem **Backup in OneDrive**
+haben alle Geräte die gleichen Tafeln (siehe [Backup in OneDrive](#backup-in-onedrive)).
 
 ## Einrichtung (einmalig)
 
@@ -109,9 +110,24 @@ Hochgeladene Videodateien bleiben im Browser; sehr grosse Videos füllen den Spe
 | PDF | Tafel > Exportieren > PDF | öffnet den Druckdialog, dort «Als PDF speichern»; eine PDF-Seite pro Tafelseite, Webseiten und Videos als Platzhalter mit Adresse |
 | PowerPoint (`.pptx`) | Tafel > Exportieren > PowerPoint | eine Folie pro Seite (16:9) mit bearbeitbaren Texten, Formen und Tabellen, Bildern, Zeichnungen, Hintergrund, Notizen, Übergängen und ausgeblendeten Folien; Videos, Webseiten, Links und Dateien als Karte mit anklickbarer Adresse. Animationen und Module (Timer, Lostopf, …) sind nicht enthalten |
 | Wandtafel-Datei (`.wandtafel.json`) | Tafel, Kapitel, Jahr oder Fach | zum Weitergeben an Kolleginnen und Kollegen oder auf ein anderes Gerät |
-| Sicherung | «Alles sichern» oben | alle Fächer, Kapitel, Tafeln und Medien in einer Datei |
+| Backup | «Backup» oben | alle Fächer, Kapitel, Tafeln und Medien in einer Datei, siehe unten |
 | Import | «Importieren» oben, Menü «…» eines Kapitels, oder Datei auf die Seite ziehen | PowerPoint-Dateien (`.pptx`), Wandtafel-Dateien und exportierte HTML-Dateien; Fächer, Jahre und Kapitel mit gleichem Namen werden ergänzt |
 | Seiten hinzufügen | Tafel > Exportieren > «Seiten aus Datei oder PowerPoint hinzufügen», oder Datei auf die Tafel ziehen | hängt die Seiten einer anderen Tafel oder die Folien einer PowerPoint an |
+
+### Backup in OneDrive
+
+Das Backup ist eine Datei `Wandtafel-Backup.wandtafel.json` mit allem. Sie heisst immer gleich: OneDrive ersetzt
+das alte Backup und behält frühere Fassungen im Versionsverlauf.
+
+| Gerät | «Backup» › «In OneDrive sichern» | «Backup» › «Backup laden …» |
+|---|---|---|
+| Computer mit Chrome oder Edge | beim ersten Mal den OneDrive-Ordner wählen (z. B. `OneDrive/Wandtafel`), danach speichert die Wandtafel direkt dort | liest das Backup direkt aus dem Ordner |
+| iPad, iPhone, Android | Teilen-Dialog: «In Dateien sichern» › OneDrive › Ordner «Wandtafel», älteres Backup ersetzen | Datei in OneDrive auswählen |
+| Safari am Mac, Firefox | lädt die Datei herunter; in den OneDrive-Ordner legen | Datei auswählen |
+
+Laden führt das Backup mit dem Gerät zusammen: Neue Tafeln kommen dazu, bei Tafeln auf beiden Geräten gilt die
+zuletzt geänderte Fassung. Gelöscht wird nichts; eine auf einem Gerät gelöschte Tafel kommt mit einem älteren
+Backup wieder. Ablauf: auf dem Gerät, an dem man gearbeitet hat, sichern; auf dem nächsten Gerät zuerst laden.
 
 ### PowerPoint importieren
 
@@ -160,7 +176,7 @@ In Chrome und Edge lässt sich eine `.pptx`-Datei danach auch per Rechtsklick > 
 importieren. Neue Versionen lädt die App im Hintergrund, sobald Internet da ist; sie gelten ab dem nächsten Start.
 
 **Wichtig:** Die Daten liegen nur in diesem Browser auf diesem Gerät. Browserdaten löschen löscht auch die Tafeln.
-Regelmässig «Alles sichern» verwenden.
+Regelmässig «Backup» › «In OneDrive sichern» verwenden.
 
 ## Lokal arbeiten
 
@@ -169,6 +185,7 @@ npm ci                                  # einmalig (Node.js 20 oder neuer)
 npx playwright install chromium         # einmalig
 npm run vorschau                        # http://localhost:8080
 node tools/pruefen.mjs                  # Browsertest, --bilder ordner speichert Bildschirmfotos
+node tools/pruefen-backup.mjs           # Backup: Ordner, zweites Gerät, iPad (Chromium und WebKit)
 ```
 
 `site/` lässt sich auch mit jedem anderen Webserver ausliefern. Direkt per Doppelklick (`file://`) funktioniert
@@ -184,6 +201,7 @@ die App nicht zuverlässig, weil Browser dort den Speicher einschränken; export
 | QR-Codes (qrcode-generator von Kazuhiko Arase, MIT-Lizenz) | `site/js/qrcode.js` |
 | Speicher im Browser (IndexedDB) | `site/js/speicher.js` |
 | Export und Import | `site/js/export.js`, Offline-Ansicht `site/js/ansicht.js` |
+| Backup (Ordner, Teilen-Dialog, Zusammenführen) | `site/js/backup.js` |
 | PowerPoint-Export (eigenes ZIP und Office Open XML, ohne Bibliothek) | `site/js/pptx.js` |
 | PowerPoint-Import (ZIP mit `DecompressionStream` entpacken, Office Open XML lesen) | `site/js/pptx-lesen.js` |
 | Web-App: Manifest, Service Worker (Dateien für offline), Installieren-Knopf | `site/manifest.webmanifest`, `site/sw.js`, `site/js/app.js` |
@@ -213,7 +231,7 @@ Farben wie in MI_Connected3 als Variablen oben in `site/css/basis.css`.
 }
 ```
 
-Eine Sicherung (`"art": "sammlung"`) enthält statt `tafel` die Listen `faecher` (mit `kapitel` und deren
+Eine Sicherung (`"art": "sammlung"`, beim Backup zusätzlich `"sicherung": true`) enthält statt `tafel` die Listen `faecher` (mit `kapitel` und deren
 Tafel-IDs) und `tafeln`. Ein Fach kann Jahre haben (`"jahre": [{ "id": "j1", "name": "1. Sek" }]`); ein Kapitel
 gehört mit `"jahr": "j1"` zu einem davon, ohne `jahr` steht es unter «Ohne Jahr». Elementtypen: `text`, `notiz`, `bild`, `video`, `webseite`, `link`, `datei`, `timer`,
 `stoppuhr`, `uhr`, `ampel`, `sozialform`, `zufall` (Lostopf), `gruppen`, `wuerfel`, `form`, `tabelle`. Eine Seite mit eigenem Design hat

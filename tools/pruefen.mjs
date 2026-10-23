@@ -313,6 +313,7 @@ try {
   // Kapitel und Fach exportieren, alles loeschen, wieder importieren
   dl = seite.waitForEvent("download");
   await seite.click("#sichern");
+  await menuePunkt("Backup als Datei herunterladen");
   const sicherung = await dl;
   const sicherungPfad = path.join(TEMP, sicherung.suggestedFilename());
   await sicherung.saveAs(sicherungPfad);
@@ -332,6 +333,7 @@ try {
   pruefe(rest === 0, "Fächer gelöscht, keine Tafeln mehr im Speicher");
 
   await seite.setInputFiles("#import-datei", sicherungPfad);
+  await dialogAusfuellen({}, "Laden");
   await seite.waitForSelector(".fach-eintrag:has-text('Deutsch')");
   pruefe((await seite.locator(".fach-eintrag").count()) === 2, "Sicherung importiert: 2 Fächer");
   await seite.click(".fach-eintrag:has-text('Mathematik')");
@@ -981,6 +983,7 @@ try {
     // Sicherung mit Jahren: Fach loeschen und wieder importieren
     const dlJ = jp.waitForEvent("download");
     await jp.click("#sichern");
+    await jp.locator(".klappmenue button", { hasText: "Backup als Datei herunterladen" }).click();
     const sicherungJ = path.join(TEMP, "jahre.wandtafel.json");
     await (await dlJ).saveAs(sicherungJ);
     await jp.locator(".fach-knoepfe button[aria-haspopup]").click();
@@ -988,6 +991,7 @@ try {
     await bestaetigen("Löschen");
     await jp.waitForSelector(".willkommen");
     await jp.setInputFiles("#import-datei", sicherungJ);
+    await bestaetigen("Laden");
     await jp.waitForSelector(".jahr-reiter");
     sm = await sammlungLesen();
     g = sm.faecher[0];
@@ -1040,7 +1044,8 @@ try {
     const antwort = await op.reload();
     await op.waitForSelector(".willkommen");
     pruefe(antwort.fromServiceWorker(), "Startseite laedt ohne Internet");
-    pruefe(await op.evaluate(() => document.fonts.check('16px "Carlito"') && getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)"), "Ohne Internet: Stil und Schrift vorhanden");
+    // Die Schrift laedt auch offline erst nach dem ersten Zeichnen, darauf warten
+    pruefe(await op.evaluate(async () => (await document.fonts.load('16px "Carlito"')).length > 0 && document.fonts.check('16px "Carlito"') && getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)"), "Ohne Internet: Stil und Schrift vorhanden");
 
     // Ohne Internet eine Lektion importieren und praesentieren
     await op.setInputFiles("#import-datei", path.join(path.dirname(new URL(import.meta.url).pathname), "..", "docs", "beispiel-lektion.wandtafel.json"));

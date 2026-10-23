@@ -20,6 +20,7 @@ var DATEIEN = [
   "js/qrcode.js",
   "js/elemente.js",
   "js/export.js",
+  "js/backup.js",
   "js/pptx-lesen.js",
   "js/pptx.js",
   "js/start.js",
