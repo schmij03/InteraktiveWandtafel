@@ -684,8 +684,8 @@
     knoten.style.width = e.b + "px";
     knoten.style.height = e.h + "px";
     knoten.style.zIndex = e.z;
-    // Formen haben die Griffleiste oberhalb; ganz oben auf der Seite innen
-    if (e.typ === "form") knoten.classList.toggle("griff-innen", e.y < GRIFF);
+    // Formen und Texte haben die Griffleiste oberhalb; ganz oben auf der Seite innen
+    if (e.typ === "form" || e.typ === "text") knoten.classList.toggle("griff-innen", e.y < GRIFF);
     formEcken(knoten, e);
   }
 

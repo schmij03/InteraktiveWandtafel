@@ -880,7 +880,12 @@ try {
     return { rx: (r.getAttribute("rx") * b.width) / 100, ry: (r.getAttribute("ry") * b.height) / 100 };
   }, karte.id);
   const knapp = textVon(i4, "Auftrag");
-  const sichtbar = await ip.evaluate((id) => getComputedStyle(document.querySelector('.element[data-id="' + id + '"] .koerper')).overflow, knapp.id);
+  const sichtbar = await ip.evaluate((id) => {
+    var k = document.querySelector('.element[data-id="' + id + '"]');
+    // Text beginnt oben im Feld (die Griffleiste liegt darüber, nicht im Feld)
+    var abstand = k.querySelector(".textfeld").getBoundingClientRect().top - k.getBoundingClientRect().top;
+    return getComputedStyle(k.querySelector(".koerper")).overflow + (abstand < 4 ? "" : " verschoben");
+  }, knapp.id);
   pruefe(
     Math.abs(karte.daten.rundung - 0.16667) < 0.001 && ecken.rx > 10 && Math.abs(ecken.rx - ecken.ry) < 1.5 && sichtbar === "visible",
     "Breite Karte mit runden (nicht gestreckten) Ecken, knappes Textfeld wird nicht abgeschnitten"
