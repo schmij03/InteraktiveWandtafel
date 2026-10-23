@@ -864,6 +864,14 @@
             var bodyPr = kind(sp, "txBody", "bodyPr");
             var anker = (bodyPr && bodyPr.getAttribute("anchor")) || (kind(vorLayout, "txBody", "bodyPr") || { getAttribute: function () {} }).getAttribute("anchor") || "t";
             daten.form = form;
+            if (form === "abgerundet") {
+              // Rundung als Anteil der kürzeren Seite; ohne Angabe 1/6 wie in PowerPoint
+              var adj = alle(geo, "gd").filter(function (g) {
+                return g.getAttribute("name") === "adj";
+              })[0];
+              var wert = adj && /val\s+(\d+)/.exec(adj.getAttribute("fmla") || "");
+              daten.rundung = Math.min(0.5, (wert ? parseInt(wert[1], 10) : 16667) / 100000);
+            }
             daten.fuellung = fuell || "keine";
             daten.rand = rand || "#065a82";
             daten.randDicke = randDicke;

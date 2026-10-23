@@ -638,6 +638,11 @@ body.praesentieren .notizen-bereich {
   border-color: transparent;
   box-shadow: none;
 }
+/* Wie in PowerPoint: Text, der nicht ganz in sein Feld passt, wird nicht abgeschnitten */
+.element-text .koerper,
+.element-text .textfeld {
+  overflow: visible;
+}
 .element-text .griff {
   background: rgba(244, 248, 250, 0.95);
   transition: opacity 0.15s;
@@ -1583,7 +1588,7 @@ body.drucken {
 }
 .element-form .textfeld {
   height: auto;
-  max-height: 100%;
+  overflow: visible;
   padding: 4px 6px;
   pointer-events: none;
   cursor: grab;

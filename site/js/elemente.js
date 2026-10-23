@@ -93,7 +93,7 @@
   // innen: Textbereich [oben, rechts, unten, links] in Prozent; pptx: Vorlage in PowerPoint
   var FORMEN = [
     { wert: "rechteck", text: "Rechteck", pptx: "rect", innen: [4, 4, 4, 4], svg: '<rect width="100" height="100"/>' },
-    { wert: "abgerundet", text: "Abgerundetes Rechteck", pptx: "roundRect", innen: [6, 6, 6, 6], svg: '<rect width="100" height="100" rx="12" ry="12"/>' },
+    { wert: "abgerundet", text: "Abgerundetes Rechteck", pptx: "roundRect", innen: [6, 6, 6, 6], svg: '<rect width="100" height="100" rx="12" ry="12" data-rund=""/>' },
     { wert: "ellipse", text: "Ellipse / Kreis", pptx: "ellipse", innen: [15, 15, 15, 15], svg: '<ellipse cx="50" cy="50" rx="50" ry="50"/>' },
     { wert: "dreieck", text: "Dreieck", pptx: "triangle", innen: [45, 22, 4, 22], svg: '<polygon points="50,0 100,100 0,100"/>' },
     { wert: "raute", text: "Raute", pptx: "diamond", innen: [25, 25, 25, 25], svg: '<polygon points="50,0 100,50 50,100 0,50"/>' },
@@ -103,6 +103,18 @@
     { wert: "sprechblase", text: "Sprechblase", pptx: "wedgeRectCallout", innen: [4, 4, 32, 4], svg: '<path d="M0 0H100V72H38L18 100L22 72H0Z"/>' }
   ];
   var FORM_STANDARD = { fuellung: "#d6ecfb", rand: "#065a82", randDicke: 3 };
+
+  /**
+   * Runde Ecken auch bei breiten Formen: Die Zeichnung wird auf die Form gestreckt, darum
+   * rx und ry getrennt. rundung = Radius als Anteil der kürzeren Seite (wie in PowerPoint).
+   */
+  function formEcken(knoten, e) {
+    var r = e.typ === "form" && knoten.querySelector(".form-bild rect[data-rund]");
+    if (!r || !e.b || !e.h) return;
+    var radius = Math.min(e.b, e.h) * (e.daten.rundung != null ? e.daten.rundung : 0.12);
+    r.setAttribute("rx", (radius / e.b) * 100);
+    r.setAttribute("ry", (radius / e.h) * 100);
+  }
 
   function formVon(wert) {
     for (var i = 0; i < FORMEN.length; i++) if (FORMEN[i].wert === wert) return FORMEN[i];
@@ -674,6 +686,7 @@
     knoten.style.zIndex = e.z;
     // Formen haben die Griffleiste oberhalb; ganz oben auf der Seite innen
     if (e.typ === "form") knoten.classList.toggle("griff-innen", e.y < GRIFF);
+    formEcken(knoten, e);
   }
 
   /** Fuellt den Inhalt eines Elements */
@@ -1492,6 +1505,7 @@
       form.style.stroke = dicke > 0 ? d.rand || FORM_STANDARD.rand : "none";
       form.style.strokeWidth = dicke + "px";
       form.setAttribute("vector-effect", "non-scaling-stroke");
+      formEcken(knoten, e);
       var bereich = el("div", "form-text form-" + (d.vertikal || "mitte"));
       bereich.style.inset = f.innen.join("% ") + "%";
       koerper.appendChild(bereich);
