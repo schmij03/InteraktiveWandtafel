@@ -455,6 +455,30 @@ try {
   await timer.locator("button", { hasText: "OK" }).click();
   pruefe((await timer.locator(".gross-zahl").textContent()) === "01:30", "Timer mit eigener Zeit 1:30");
 
+  // iPad: Der Ton muss beim Tipp auf «Start» freigeschaltet werden, nicht erst beim Klingeln
+  await fs2.evaluate(() => {
+    window.__toene = { kontexte: 0, oszillatoren: 0 };
+    const Echt = window.AudioContext;
+    window.AudioContext = function () {
+      window.__toene.kontexte++;
+      return new Echt();
+    };
+    const osz = Echt.prototype.createOscillator;
+    Echt.prototype.createOscillator = function () {
+      window.__toene.oszillatoren++;
+      return osz.call(this);
+    };
+  });
+  await timer.locator("button", { hasText: "Andere Zeit" }).click();
+  await timer.locator('input[aria-label="Minuten"]').fill("0");
+  await timer.locator('input[aria-label="Sekunden"]').fill("1");
+  await timer.locator("button", { hasText: "OK" }).click();
+  await timer.locator("button", { hasText: "Start" }).click();
+  const beimStart = await fs2.evaluate(() => window.__toene.kontexte);
+  await fs2.waitForFunction(() => window.__toene.oszillatoren >= 3, null, { timeout: 4000 });
+  const toene = await fs2.evaluate(() => window.__toene);
+  pruefe(beimStart === 1 && toene.kontexte === 1 && toene.oszillatoren === 3, "Timer-Ton beim Start freigeschaltet und beim Ablauf gespielt");
+
   await fs2.click('[data-neu="link"]');
   await dlg({ url: "https://example.org/aufgabe", qr: "ja" }, "Einfügen");
   pruefe((await fs2.locator(".element-link .qr-bild svg path").count()) === 1, "Link mit QR-Code");
