@@ -970,6 +970,31 @@ try {
   pruefe((await ip.locator(".element").count()) === 5, "Beispiel-Lektion: alle Elemente der ersten Seite sichtbar");
   await foto(ip, "19-ki-lektion");
 
+  // KI-Tafeln nummerieren jede Seite neu: Timer mit gleicher ID duerfen sich die Zeit nicht teilen
+  console.log("Gleiche Element-IDs auf mehreren Seiten");
+  const timerSeite = (id, sek) => ({ id: id, hintergrund: "weiss", striche: [], elemente: [{ id: "e1", typ: "timer", x: 100, y: 100, b: 420, h: 260, z: 1, daten: { sekunden: sek } }] });
+  const doppeltPfad = path.join(TEMP, "doppelte-ids.wandtafel.json");
+  fs.writeFileSync(doppeltPfad, JSON.stringify({ format: "interaktive-wandtafel", version: 1, art: "tafel", tafel: { id: "t-doppelt", version: 1, titel: "Doppelte IDs", seiten: [timerSeite("s1", 60), timerSeite("s2", 120)] } }));
+  await ip.goto(BASIS);
+  await ip.waitForSelector(".fach-eintrag");
+  await ip.setInputFiles("#import-datei", doppeltPfad);
+  await ip.locator("dialog[open]").waitFor();
+  await ip.locator("dialog[open] button[type=submit]").click();
+  await ip.locator(".tafel-karte:has-text('Doppelte IDs') a.knopf-haupt").click();
+  await ip.waitForFunction(() => window.WandtafelEditor && window.WandtafelEditor.tafel());
+  const doppeltIds = await ied(() => window.WandtafelEditor.tafel().seiten.map((s) => s.elemente[0].id));
+  pruefe(doppeltIds[0] === "e1" && doppeltIds[1] !== "e1", "Doppelte Element-IDs beim Laden eindeutig gemacht: " + doppeltIds.join(", "));
+  const t1 = ip.locator(".element-timer");
+  await t1.locator("button", { hasText: "Andere Zeit" }).click();
+  await t1.locator('input[aria-label="Minuten"]').fill("0");
+  await t1.locator('input[aria-label="Sekunden"]').fill("1");
+  await t1.locator("button", { hasText: "OK" }).click();
+  await t1.locator("button", { hasText: "Start" }).click();
+  await ip.waitForFunction(() => document.querySelector(".element-timer .gross-zahl").textContent === "00:00", null, { timeout: 4000 });
+  await ip.locator(".seite-wahl").nth(1).click();
+  await ip.waitForFunction(() => window.WandtafelEditor.seite() === 2);
+  pruefe((await ip.locator(".element-timer .gross-zahl").textContent()) === "02:00", "Timer auf der nächsten Seite behält seine eigene Zeit");
+
   // Fertige Lektionsreihe (docs/lektionen) als Sammlung mit Jahr importieren
   console.log("Lektionsreihe 02-Algorithmen");
   await ip.goto(BASIS);
