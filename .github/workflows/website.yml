@@ -22,7 +22,8 @@ concurrency:
 
 jobs:
   pruefen:
-    runs-on: ubuntu-latest
+    # Fest auf 24.04: Playwright 1.56 installiert Chromium nicht auf ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +58,7 @@ jobs:
   veroeffentlichen:
     needs: pruefen
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.pages.outputs.page_url }}
