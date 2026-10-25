@@ -2280,7 +2280,7 @@
           fehlerSeite("Diese Tafel gibt es in diesem Browser nicht (mehr). Tafeln liegen nur auf dem Gerät, auf dem sie angelegt wurden. Zum Weitergeben «Exportieren» verwenden.");
           return;
         }
-        tafel = t;
+        tafel = E.idsEindeutig(t);
         var nr = parseInt(parameter.get("seite"), 10);
         seiteNr = nr > 0 ? begrenzen(nr - 1, 0, tafel.seiten.length - 1) : 0;
         document.getElementById("titel").value = tafel.titel;

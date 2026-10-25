@@ -15,7 +15,7 @@
   var quelle = document.getElementById("wandtafel-daten");
   if (!quelle) return;
   var paket = JSON.parse(quelle.textContent);
-  var tafel = paket.tafel;
+  var tafel = E.idsEindeutig(paket.tafel);
   var medien = paket.medien || {};
   var drucken = document.body.classList.contains("drucken");
   var nummer = 0;

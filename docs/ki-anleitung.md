@@ -118,7 +118,7 @@ Vorgehen:
 - **Fläche:** jede Seite ist **1600 × 900** Punkte (16:9). `x`, `y` = obere linke Ecke, `b` = Breite,
   `h` = Höhe. Alles muss innerhalb der Fläche liegen: `x + b ≤ 1600`, `y + h ≤ 900`.
 - `z`: Reihenfolge der Ebenen (grössere Zahl liegt oben), innerhalb der Seite fortlaufend.
-- `id`: eindeutig innerhalb der Seite.
+- `id`: eindeutig innerhalb der ganzen Tafel, z. B. `s2e1` für das erste Element auf Seite 2.
 - `anim` (freiwillig): Element erscheint beim Präsentieren erst mit «Weiter». `effekt`: `einblenden`,
   `fliegen`, `zoomen`, `wischen`; `nr`: Reihenfolge ab 1 (gleiche Nummer erscheint gleichzeitig).
 - Elemente ausser Text und Form haben oben eine **Kopfleiste von 44 Punkten**; die Höhe darum etwas

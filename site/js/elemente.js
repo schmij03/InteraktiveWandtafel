@@ -511,6 +511,25 @@
     Object.keys(laufend).forEach(stoppen);
   }
 
+  /**
+   * Element-IDs ueber die ganze Tafel eindeutig machen. Tafeln aus der KI-Anleitung
+   * nummerieren jede Seite neu (e1, e2, ...); der Zustand oben haengt aber an der
+   * ID, sonst teilen sich Timer auf verschiedenen Seiten eine Zeit. Das erste
+   * Vorkommen behaelt seine ID, die neue ist bei jedem Laden gleich.
+   */
+  function idsEindeutig(tafel) {
+    var vergeben = {};
+    tafel.seiten.forEach(function (s, nr) {
+      s.elemente.forEach(function (e) {
+        var id = e.id;
+        for (var n = 1; !id || vergeben[id]; n++) id = (e.id || "e") + "-s" + (nr + 1) + (n > 1 ? "-" + n : "");
+        e.id = id;
+        vergeben[id] = true;
+      });
+    });
+    return tafel;
+  }
+
   /** Element ist weg: Anzeige und Zustand (auch den Wecker des Timers) aufgeben */
   function vergessen(id) {
     stoppen(id);
@@ -1810,6 +1829,7 @@
     stoppen: stoppen,
     alleStoppen: alleStoppen,
     vergessen: vergessen,
+    idsEindeutig: idsEindeutig,
     stricheZeichnen: stricheZeichnen,
     seitenTitel: seitenTitel,
     snippetUrl: snippetUrl,
